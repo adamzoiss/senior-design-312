@@ -1,2 +1,56 @@
-# senior-design-312
-FAMU-FSU COE ECE Senior Design Project - Team 312
+# Senior Design Project - Team 312
+
+
+## Links:
+
+__Files & Notes:__ [SharePoint](https://fsu-my.sharepoint.com/personal/amw21i_fsu_edu/_layouts/15/Doc.aspx?sourcedoc={c8d6e6cb-04f5-4a5c-a4a4-ac70581ecfba}&action=edit&wd=target%28Class%20Handouts.one%7C43749e4e-c570-4688-8d40-703e8b013bf2%2FSenior%20Design%20Projects%7C01b6a98f-3880-41ca-834b-d67c770890d6%2F%29&wdorigin=NavigationUrl)
+
+
+## Information:
+
+__Accessing the Repo:__
+
+1. Make a github account (Make sure you set your username and email in global config)
+2. install _gh_ for github authentication (VNC is a lot easier to use when setting this up on a rpi)
+```bash
+gh auth login
+```
+3. Follow steps and log in
+4. Verify with:
+```bash
+gh auth status
+```
+5. Cloning with HTTP should work now
+
+
+
+
+__RPI Setup:__
+
+* Flash a microSD card with a 64-bit OS w/ RPI imager (ex. debian)
+
+* Select option that initializes SSH while flashing OS
+
+* Initialize ssh & VNC connectivity via:
+```bash
+sudo raspi-config
+```
+
+* Run:
+```bash
+sudo apt upgrade
+```
+
+
+
+
+## Contributors:
+Danielle Awoniyi : danielle1.awoniyi@famu.edu
+
+Amira McKaige : amm21bc@fsu.edu
+
+Amelia Wondracek : amw21i@fsu.edu
+
+Travis Gabauer : tg21b@fsu.edu
+
+Adam Zoiss : aez18@fsu.edu
