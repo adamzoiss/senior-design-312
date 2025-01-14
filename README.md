@@ -41,7 +41,35 @@ sudo raspi-config
 sudo apt upgrade
 ```
 
+## Using Git:
 
+* Always make edits in a branch, do not work directly on main. To see what branch is active:
+```bash
+git branch
+```
+
+* To checkout an active branch with name *branchname*:
+```bash
+git checkout branchname
+```
+
+* To create a new working branch:
+```bash
+git checkout -b nameofbranch
+```
+
+* After making changes on a branch, save (commit) the changes by:
+```bash
+git commit -a -m "brief description of what was done"
+```
+This saves the changes locally on your computer, to add (push the changes to github)
+```bash
+git push origin branchname
+```
+
+
+___
+__More information:__ [git information](https://git-scm.com/book/en/v2)
 
 
 ## Contributors:
