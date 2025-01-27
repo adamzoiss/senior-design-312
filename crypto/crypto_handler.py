@@ -1,7 +1,14 @@
-
+"""
+Senior Project : Hardware Encryption Device
+Team 312
+File : crypto_handler.py
+Description: This is the cryptography driver for the project. Encyption and decryption is handled
+    through this driver class.
 """
 
-The AES mode being used in the AudioEncryptor class is CFB (Cipher Feedback) mode.
+
+""" AES INFO :
+The AES mode being used in the CryptoHandler class is CFB (Cipher Feedback) mode.
 
 Characteristics of CFB Mode:
     Stream Cipher Emulation:
@@ -34,7 +41,7 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 import os
 
 
-class AudioEncryptor:
+class CryptoHandler:
     """
     Handles AES encryption and decryption of audio streams using a key and IV from a file.
 
@@ -49,7 +56,7 @@ class AudioEncryptor:
     """
     def __init__(self, key_file="key_iv.txt"):
         """
-        Initialize the AudioEncryptor instance.
+        Initialize the CryptoHandler instance.
 
         Parameters
         ----------
@@ -120,4 +127,4 @@ class AudioEncryptor:
 
 if __name__ == "__main__":
     print('Crypto Handler Program...')
-    crypto = AudioEncryptor()
+    crypto = CryptoHandler()
