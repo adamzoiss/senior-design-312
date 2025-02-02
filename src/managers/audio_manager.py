@@ -1,24 +1,20 @@
 """
 Senior Project : Hardware Encryption Device
 Team 312
-File : audio_handler.py
+File : audio_manager.py
 Description: This is the audio driver for the project. By itself it is able to record and monitor
     audio from a usb mic/headphone set. It is also able to encrypt and decrypt.
     The audio file or stream itself may be encrypted and decrypted. This provides a lot of
     flexibility down the line.
-
 """
-
 
 import pyaudio
 import wave
 import numpy as np
-import sys
 import os
 
-# Specify the project base as a path so modules can be imported.
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from crypto.crypto_handler import CryptoHandler
+from crypto_manager import CryptoManager
+from src.utils.utils import *
 
 # Path and file names for the file types.
 PATH = "./audio_files/"
@@ -29,7 +25,7 @@ DECRYPTED_AUDIO_FILE = PATH + "decrypted_audio.wav"
 DECRYPTED_AUDIO_STREAM_FILE = PATH + "decrypted_audio_stream.wav"
 
 
-class AudioHandler:
+class AudioManager:
     """
     Driver that handles the audio input and output.
     The user must specify the index of the USB mic and headphones.
@@ -58,27 +54,28 @@ class AudioHandler:
     output_stream : pyaudio.Stream or None
         Stream object for audio output.
 
-    encryptor : CryptoHandler
-        Instance of the CryptoHandler for encryption and decryption.
+    encryptor : CryptoManager
+        Instance of the CryptoManager for encryption and decryption.
     """
+
     def __init__(self):
         """
-        Initialize the AudioHandler instance and configure default audio settings.
+        Initialize the AudioManager instance and configure default audio settings.
         """
-        self.CHUNK = 32 # Affects latency for monitoring
+        self.CHUNK = 32  # Affects latency for monitoring
         self.FORMAT = pyaudio.paInt16
         self.CHANNELS = 1
         self.RATE = 44100
 
         self.audio = pyaudio.PyAudio()
-        self.input_device_index = 1 # THIS VALUE CAN CHANGE
-        self.output_device_index = 2 # THIS VALUE CAN CHANGE
+        self.input_device_index = 1  # THIS VALUE CAN CHANGE
+        self.output_device_index = 2  # THIS VALUE CAN CHANGE
 
         self.input_stream = None
         self.output_stream = None
 
         # Initialize the encryptor
-        self.encryptor = CryptoHandler()
+        self.encryptor = CryptoManager()
 
     def find_devices(self):
         """
@@ -139,7 +136,9 @@ class AudioHandler:
         self._open_streams()
         try:
             while True:
-                data = self.input_stream.read(self.CHUNK, exception_on_overflow=False)
+                data = self.input_stream.read(
+                    self.CHUNK, exception_on_overflow=False
+                )
                 self.output_stream.write(data)
         except KeyboardInterrupt:
             print("\nMonitoring stopped.")
@@ -156,45 +155,38 @@ class AudioHandler:
             The name of the output WAV file (default is "recorded_audio.wav").
         """
         # Get the parent directory of the current script
-        parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-
+        parent_dir = get_proj_root()
         # Create the target folder path in the parent directory
         output_dir = os.path.join(parent_dir, PATH)
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-
         # Construct the full path for the output file
-        output_file_path = os.path.join(output_dir, os.path.basename(output_file))
-
-        # Check if the output file already exists
-        if os.path.exists(output_file_path):
-            overwrite = input(f"{output_file_path} exists. Overwrite? (y/n): ").strip().lower()
-            if overwrite != 'y':
-                print("Recording canceled.")
-                return
+        output_file_path = os.path.join(
+            output_dir, os.path.basename(output_file)
+        )
+        # Ensure that the path exists, and if doesn't is created.
+        ensure_path(str(output_dir))
 
         try:
             print("Recording... Press Ctrl+C to stop.")
             self._open_streams()
-            frames = [] # List to store recorded frames
+            frames = []  # List to store recorded frames
             try:
                 while True:
                     # Capture audio data from the input stream
-                    data = self.input_stream.read(self.CHUNK, exception_on_overflow=False)
+                    data = self.input_stream.read(
+                        self.CHUNK, exception_on_overflow=False
+                    )
                     frames.append(data)
                     # Playback the captured data
                     self.output_stream.write(data)
             except KeyboardInterrupt:
                 print("\nRecording stopped.")
                 # Save recorded audio to a WAV file
-                with wave.open(output_file, 'wb') as wf:
+                with wave.open(output_file, "wb") as wf:
                     wf.setnchannels(self.CHANNELS)
                     wf.setsampwidth(self.audio.get_sample_size(self.FORMAT))
                     wf.setframerate(self.RATE)
-                    wf.writeframes(b''.join(frames))
+                    wf.writeframes(b"".join(frames))
                 print(f"Audio saved to {output_file}")
-        except PermissionError:
-            print(f"Permission denied: Unable to write to {output_file}")
         except Exception as e:
             print(f"An error occurred: {e}")
         finally:
@@ -210,22 +202,15 @@ class AudioHandler:
             The name of the output encrypted file (default is "recorded_audio_encrypted.wav").
         """
         # Get the parent directory of the current script
-        parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-
+        parent_dir = get_proj_root()
         # Create the target folder path in the parent directory
         output_dir = os.path.join(parent_dir, PATH)
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-
         # Construct the full path for the output file
-        output_file_path = os.path.join(output_dir, os.path.basename(output_file))
-
-        # Check if the output file already exists
-        if os.path.exists(output_file_path):
-            overwrite = input(f"{output_file_path} exists. Overwrite? (y/n): ").strip().lower()
-            if overwrite != 'y':
-                print("Recording canceled.")
-                return
+        output_file_path = os.path.join(
+            output_dir, os.path.basename(output_file)
+        )
+        # Ensure that the path exists, and if doesn't is created.
+        ensure_path(str(output_dir))
 
         try:
             print("Recording... Press Ctrl+C to stop.")
@@ -233,17 +218,19 @@ class AudioHandler:
             frames = []
             try:
                 while True:
-                    data = self.input_stream.read(self.CHUNK, exception_on_overflow=False)
+                    data = self.input_stream.read(
+                        self.CHUNK, exception_on_overflow=False
+                    )
                     encrypted_data = self.encryptor.encrypt(data)
                     frames.append(encrypted_data)
                     self.output_stream.write(data)
             except KeyboardInterrupt:
                 print("\nRecording stopped.")
-                with wave.open(output_file, 'wb') as wf:
+                with wave.open(output_file, "wb") as wf:
                     wf.setnchannels(self.CHANNELS)
                     wf.setsampwidth(self.audio.get_sample_size(self.FORMAT))
                     wf.setframerate(self.RATE)
-                    wf.writeframes(b''.join(frames))
+                    wf.writeframes(b"".join(frames))
                 print(f"Audio saved to {output_file}")
         except PermissionError:
             print(f"Permission denied: Unable to write to {output_file}")
@@ -252,26 +239,44 @@ class AudioHandler:
         finally:
             self._close_streams()
 
+    def encrypt_file(
+        self, input_file=AUDIO_FILE, output_file=ENCRYPTED_AUDIO_FILE
+    ):
+        """
+        Encrypt an audio file and save the encrypted data to a new file.
 
-    def encrypt_file(self, input_file=AUDIO_FILE, output_file=ENCRYPTED_AUDIO_FILE):
+        Parameters
+        ----------
+        input_file : str, optional
+            The path to the input audio file to be encrypted (default is "audio.wav").
+        output_file : str, optional
+            The path to the output file where the encrypted audio will be saved (default is "encrypted_audio.bin").
+        """
         # Get the parent directory of the current script
-        parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-
+        parent_dir = get_proj_root()
         # Create the target folder path in the parent directory
         output_dir = os.path.join(parent_dir, PATH)
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-
         # Construct the full path for the output file
-        output_file_path = os.path.join(output_dir, os.path.basename(output_file))
+        output_file_path = os.path.join(
+            output_dir, os.path.basename(output_file)
+        )
+        # Ensure that the path exists, and if doesn't is created.
+        ensure_path(str(output_dir))
 
         # Construct the full path for the input file
-        input_file_path = os.path.join(output_dir, os.path.basename(input_file))
+        input_file_path = os.path.join(
+            output_dir, os.path.basename(input_file)
+        )
+
+        # Check if the input file exists
+        if not os.path.exists(input_file_path):
+            print(f"Error: {input_file_path} does not exist.")
+            return
 
         with open(input_file_path, "rb") as f:
             audio_data = f.read()
 
-        encryptor = CryptoHandler()
+        encryptor = CryptoManager()
         encrypted_data = encryptor.encrypt(audio_data)
 
         with open(output_file_path, "wb") as f:
@@ -279,7 +284,9 @@ class AudioHandler:
 
         print(f"Encrypted audio saved to {output_file}")
 
-    def decrypt_audio_file(self, input_file=ENCRYPTED_AUDIO_FILE, output_file=DECRYPTED_AUDIO_FILE):
+    def decrypt_audio_file(
+        self, input_file=ENCRYPTED_AUDIO_FILE, output_file=DECRYPTED_AUDIO_FILE
+    ):
         """
         Decrypt an encrypted audio file and save the decrypted audio to a new file.
 
@@ -290,45 +297,38 @@ class AudioHandler:
         output_file : str, optional
             The name of the output WAV file to save decrypted audio (default is "recorded_audio_decrypted.wav").
         """
-
         # Get the parent directory of the current script
-        parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-
+        parent_dir = get_proj_root()
         # Create the target folder path in the parent directory
         output_dir = os.path.join(parent_dir, PATH)
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-
         # Construct the full path for the output file
-        output_file_path = os.path.join(output_dir, os.path.basename(output_file))
+        output_file_path = os.path.join(
+            output_dir, os.path.basename(output_file)
+        )
+        # Ensure that the path exists, and if doesn't is created.
+        ensure_path(str(output_dir))
 
         # Construct the full path for the input file
-        input_file_path = os.path.join(output_dir, os.path.basename(input_file))
+        input_file_path = os.path.join(
+            output_dir, os.path.basename(input_file)
+        )
 
-        # Check if the output file already exists
-        if os.path.exists(output_file_path):
-            overwrite = input(f"{output_file_path} exists. Overwrite? (y/n): ").strip().lower()
-            if overwrite != 'y':
-                print("Recording canceled.")
-                return
-            
         # Check if the input file exists
         if not os.path.exists(input_file_path):
             print(f"Error: {input_file_path} does not exist.")
             return
 
-
         try:
             print(f"Decrypting {input_file}...")
             # Read encrypted data from the file
-            with open(input_file, 'rb') as encrypted_file:
+            with open(input_file, "rb") as encrypted_file:
                 encrypted_data = encrypted_file.read()
 
             # Decrypt the audio data
             decrypted_data = self.encryptor.decrypt(encrypted_data)
 
             # Write the decrypted data to a WAV file
-            with wave.open(output_file, 'wb') as wf:
+            with wave.open(output_file, "wb") as wf:
                 wf.setnchannels(self.CHANNELS)
                 wf.setsampwidth(self.audio.get_sample_size(self.FORMAT))
                 wf.setframerate(self.RATE)
@@ -338,7 +338,11 @@ class AudioHandler:
         except Exception as e:
             print(f"An error occurred during decryption: {e}")
 
-    def decrypt_audio_file_chunked(self, input_file=ENCRYPTED_AUDIO_STREAM_FILE, output_file=DECRYPTED_AUDIO_STREAM_FILE):
+    def decrypt_audio_file_chunked(
+        self,
+        input_file=ENCRYPTED_AUDIO_STREAM_FILE,
+        output_file=DECRYPTED_AUDIO_STREAM_FILE,
+    ):
         """
         Decrypt an encrypted audio file (chunked frames) and save the decrypted audio to a new file.
 
@@ -350,26 +354,21 @@ class AudioHandler:
             The file to save the decrypted audio (default is "recorded_audio_decrypted.wav").
         """
         # Get the parent directory of the current script
-        parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-
+        parent_dir = get_proj_root()
         # Create the target folder path in the parent directory
         output_dir = os.path.join(parent_dir, PATH)
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-
         # Construct the full path for the output file
-        output_file_path = os.path.join(output_dir, os.path.basename(output_file))
+        output_file_path = os.path.join(
+            output_dir, os.path.basename(output_file)
+        )
+        # Ensure that the path exists, and if doesn't is created.
+        ensure_path(str(output_dir))
 
         # Construct the full path for the input file
-        input_file_path = os.path.join(output_dir, os.path.basename(input_file))
+        input_file_path = os.path.join(
+            output_dir, os.path.basename(input_file)
+        )
 
-        # Check if the output file already exists
-        if os.path.exists(output_file_path):
-            overwrite = input(f"{output_file_path} exists. Overwrite? (y/n): ").strip().lower()
-            if overwrite != 'y':
-                print("Recording canceled.")
-                return
-            
         # Check if the input file exists
         if not os.path.exists(input_file_path):
             print(f"Error: {input_file_path} does not exist.")
@@ -380,7 +379,7 @@ class AudioHandler:
             decrypted_frames = []
 
             # Open the encrypted audio file
-            with wave.open(input_file, 'rb') as wf:
+            with wave.open(input_file, "rb") as wf:
                 # Get parameters from the encrypted file
                 num_channels = wf.getnchannels()
                 sample_width = wf.getsampwidth()
@@ -394,11 +393,11 @@ class AudioHandler:
                     decrypted_frames.append(decrypted_chunk)
 
             # Write the decrypted frames to a new WAV file
-            with wave.open(output_file, 'wb') as wf:
+            with wave.open(output_file, "wb") as wf:
                 wf.setnchannels(num_channels)
                 wf.setsampwidth(sample_width)
                 wf.setframerate(frame_rate)
-                wf.writeframes(b''.join(decrypted_frames))
+                wf.writeframes(b"".join(decrypted_frames))
 
             print(f"Decrypted audio saved to {output_file}")
         except Exception as e:
@@ -414,9 +413,8 @@ class AudioHandler:
         self.audio.terminate()
 
 
-
 if __name__ == "__main__":
-    handler = AudioHandler()
+    handler = AudioManager()
     print("1. Monitor audio")
     print("2. Record audio")
     print("3. Record & encrypt an audio stream")

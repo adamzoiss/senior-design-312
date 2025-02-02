@@ -1,10 +1,35 @@
 # Senior Design Project - Team 312
 
 
-## Links:
+## Sharepoint link:
 
 __Files & Notes:__ [SharePoint](https://fsu-my.sharepoint.com/personal/amw21i_fsu_edu/_layouts/15/Doc.aspx?sourcedoc={c8d6e6cb-04f5-4a5c-a4a4-ac70581ecfba}&action=edit&wd=target%28Class%20Handouts.one%7C43749e4e-c570-4688-8d40-703e8b013bf2%2FSenior%20Design%20Projects%7C01b6a98f-3880-41ca-834b-d67c770890d6%2F%29&wdorigin=NavigationUrl)
 
+___
+# Quick Links for Navigation and Useful Information
+
+1. [RPI Setup](#rpi-setup)
+
+2. [Coding Environment](#coding-environment)
+
+3. [Running the Code](#running-the-program)
+
+4. [Using Git](#using-git)
+
+5. [Team/Contributors Info](#contributors)
+___
+
+[PEP 8 – Style Guide for Python Code](https://peps.python.org/pep-0008/#introduction) - Guideline for how to code in Python
+
+[Python Project/Package Template](https://github.com/pypa/sampleproject) - To better understand the structure of the project, a template for python projects/packages can be viewed as a reference.
+
+[Raspberry Pi pinout information](https://pinout.xyz/) - Useful for setting up buttons, switches, RF chip, etc. via the GPIO pins.
+
+[CC1101 Python Package](https://github.com/fphammerle/python-cc1101) - Package for controlling the CC1101 Transceiver chip.
+
+[Git Information](https://git-scm.com/book/en/v2) - Information on how to use git.
+
+___
 
 ## __RPI Setup:__
 
@@ -21,7 +46,7 @@ __Files & Notes:__ [SharePoint](https://fsu-my.sharepoint.com/personal/amw21i_fs
 
 4. Plug SD card in, power on
 
-
+___
 
 * __How to SSH to rpi:__
 
@@ -36,6 +61,7 @@ __Files & Notes:__ [SharePoint](https://fsu-my.sharepoint.com/personal/amw21i_fs
 * To make life simpler going forward, get the VS code extension *Remote Explorer*
     - Then follow steps to make a SSH connection in VS code.
 
+___
 5. Once SSH connection to the rpi is made, open the config menu via:
 
     ```bash
@@ -97,8 +123,8 @@ __Files & Notes:__ [SharePoint](https://fsu-my.sharepoint.com/personal/amw21i_fs
         ```bash
         sudo reboot
         ```
-    
 
+___
 
 ## __Coding Environment:__
 * Update to the latest pip (Package installing program)
@@ -148,6 +174,22 @@ __Files & Notes:__ [SharePoint](https://fsu-my.sharepoint.com/personal/amw21i_fs
 
     [Unknown PCM cards.pcm.XXXX](https://stackoverflow.com/questions/7088672/pyaudio-working-but-spits-out-error-messages-each-time)
 
+___
+
+## __Running the Code:__
+
+* While testing or developing, run:
+    ```bash
+    pip install -e .
+    ```
+    - This creates a development package on the local device, this is used for package managemnet (ensure all the files can be accessed throughout the code)
+
+* Make sure to export the path if there are any errors about imports not working via:
+    ```bash
+    export PYTHONPATH="/path/to/repo"
+    ```
+
+* Running each program individually should work now.
 
 ## __Using Git:__
 
@@ -170,10 +212,10 @@ __Files & Notes:__ [SharePoint](https://fsu-my.sharepoint.com/personal/amw21i_fs
     ```bash
     git commit -a -m "brief description of what was done"
     ```
-This saves the changes locally on your computer, to add (push the changes to github)
-    ```bash
-    git push origin branchname
-    ```
+    - This saves the changes locally on your computer, to add (push the changes to github)
+        ```bash
+        git push origin branchname
+        ```
 
 * Getting the most up to date code:
     - save changes that were done on your branch via a commit or stash
@@ -186,10 +228,7 @@ This saves the changes locally on your computer, to add (push the changes to git
         ```
     - the most up to date version of main is now what you see
 
-
 ___
-__More information:__ [git information](https://git-scm.com/book/en/v2)
-
 
 ## Contributors:
 Danielle Awoniyi : danielle1.awoniyi@famu.edu
