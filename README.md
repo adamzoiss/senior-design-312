@@ -30,7 +30,6 @@ ___
 [Git Information](https://git-scm.com/book/en/v2) - Information on how to use git.
 
 ___
-
 ## __RPI Setup:__
 
 1. Download the [Raspberry PI imager](https://www.raspberrypi.com/software/)
@@ -45,9 +44,7 @@ ___
     - Finally flash the SD card with the OS
 
 4. Plug SD card in, power on
-
 ___
-
 * __How to SSH to rpi:__
 
     - using powershell or terminal (must be on same network)
@@ -125,7 +122,6 @@ ___
         ```
 
 ___
-
 ## __Coding Environment:__
 * Update to the latest pip (Package installing program)
     ```bash
@@ -175,7 +171,6 @@ ___
     [Unknown PCM cards.pcm.XXXX](https://stackoverflow.com/questions/7088672/pyaudio-working-but-spits-out-error-messages-each-time)
 
 ___
-
 ## __Running the Code:__
 
 * While testing or developing, run:
@@ -229,7 +224,6 @@ ___
     - the most up to date version of main is now what you see
 
 ___
-
 ## Contributors:
 Danielle Awoniyi : danielle1.awoniyi@famu.edu
 
