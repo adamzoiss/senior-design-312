@@ -1,6 +1,3 @@
-
-
-
 import pyaudio
 
 # Initialize PyAudio

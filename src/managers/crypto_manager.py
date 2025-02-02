@@ -1,14 +1,13 @@
 """
 Senior Project : Hardware Encryption Device
 Team 312
-File : crypto_handler.py
+File : crypto_manager.py
 Description: This is the cryptography driver for the project. Encyption and decryption is handled
     through this driver class.
 """
 
-
 """ AES INFO :
-The AES mode being used in the CryptoHandler class is CFB (Cipher Feedback) mode.
+The AES mode being used in the CryptoManager class is CFB (Cipher Feedback) mode.
 
 Characteristics of CFB Mode:
     Stream Cipher Emulation:
@@ -36,12 +35,13 @@ Other modes:
 
 """
 
-
+import sys
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-import os
+
+from src.utils.utils import *
 
 
-class CryptoHandler:
+class CryptoManager:
     """
     Handles AES encryption and decryption of audio streams using a key and IV from a file.
 
@@ -54,41 +54,38 @@ class CryptoHandler:
     cipher : Cipher
         The AES cipher for encryption and decryption.
     """
-    def __init__(self, key_file="key_iv.txt"):
+
+    def __init__(self, key_file="/keys/aes.txt"):
         """
-        Initialize the CryptoHandler instance.
+        Initialize the CryptoManager instance.
 
         Parameters
         ----------
         key_file : str, optional
             Path to the file containing the AES key and IV.
         """
-        self.key_file = key_file
-        self.key, self.iv = self._load_or_generate_key_iv()
+        self.key_file = str(get_proj_root()) + key_file
+        self.key, self.iv = self._load_key_iv()
         self.cipher = Cipher(algorithms.AES(self.key), modes.CFB(self.iv))
 
-    def _load_or_generate_key_iv(self):
+    def _load_key_iv(self):
         """
-        Load the AES key and IV from a file, or generate and save them if the file does not exist.
+        Load the AES key and IV from a file.
 
         Returns
         -------
         tuple
             A tuple containing the AES key (bytes) and IV (bytes).
         """
-        if os.path.exists(self.key_file):
+        try:
             with open(self.key_file, "r") as f:
                 key = bytes.fromhex(f.readline().strip())
                 iv = bytes.fromhex(f.readline().strip())
                 print("Key and IV loaded from file.")
-        else:
-            key = os.urandom(32)  # AES-256 key
-            iv = os.urandom(16)  # IV
-            with open(self.key_file, "w") as f:
-                f.write(key.hex() + "\n")
-                f.write(iv.hex() + "\n")
-            print("Key and IV generated and saved to file.")
-        return key, iv
+                return key, iv
+        except Exception as e:
+            print(f"Exception thrown: {e}\nExiting program...")
+            sys.exit()
 
     def encrypt(self, data):
         """
@@ -126,5 +123,6 @@ class CryptoHandler:
 
 
 if __name__ == "__main__":
-    print('Crypto Handler Program...')
-    crypto = CryptoHandler()
+
+    print("Crypto Manager Program...")
+    crypto = CryptoManager()
