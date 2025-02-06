@@ -135,7 +135,7 @@ ___
 ---
 
 ## __Coding Environment:__
-* Update to the latest pip (Package installing program)
+* Update to the latest `pip` (Package installing program)
     ```bash
     pip install --upgrade pip
     ```
@@ -513,12 +513,12 @@ This will flag type errors before runtime.
 
 ## __Using Git:__
 
-* Always make edits in a branch, do not work directly on main. To see what branch is active:
+* Always make edits in a `branch`, do not work directly on main. To see what branch is active:
     ```bash
     git branch
     ```
 
-* To checkout an active branch with name *branchname*:
+* To `checkout` an active branch with name *branchname*:
     ```bash
     git checkout branchname
     ```
@@ -528,7 +528,7 @@ This will flag type errors before runtime.
     git checkout -b nameofbranch
     ```
 
-* After making changes on a branch, save (commit) the changes by:
+* After making changes on a branch, save (`commit`) the changes by:
     ```bash
     git commit -a -m "brief description of what was done"
     ```
@@ -548,7 +548,7 @@ This will flag type errors before runtime.
 
 * Getting the most up to date code:
     - save changes that were done on your branch via a commit or stash
-    - check out main
+    - check out `main`
         ```bash
         git fetch
         ```
