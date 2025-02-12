@@ -4,28 +4,26 @@ from cryptography.hazmat.backends import default_backend
 
 # Generate RSA keys
 private_key = rsa.generate_private_key(
-    public_exponent=65537, key_size=4096, backend=default_backend()
+    public_exponent=65537,
+    key_size=4096,
+    backend=default_backend()
 )
 public_key = private_key.public_key()
 
 # Save private key
 with open("private_key.pem", "wb") as f:
-    f.write(
-        private_key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption(),
-        )
-    )
+    f.write(private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption()
+    ))
 
 # Save public key
 with open("public_key.pem", "wb") as f:
-    f.write(
-        public_key.public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo,
-        )
-    )
+    f.write(public_key.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo
+    ))
 
 import os
 import base64
@@ -44,91 +42,78 @@ import numpy as np
 import scipy.io.wavfile as wavfile
 import traceback
 
-
 def record_audio(duration=3, sample_rate=44100):
     print(f"\nRecording will start in 3 seconds...")
     time.sleep(3)
     print("Recording...")
-
-    recording = sd.rec(
-        int(duration * sample_rate),
-        samplerate=sample_rate,
-        channels=2,
-        dtype="int16",
-    )
+    
+    recording = sd.rec(int(duration * sample_rate),
+                      samplerate=sample_rate,
+                      channels=2,
+                      dtype='int16')
     sd.wait()
     print("Recording finished!")
 
     temp_filename = "recorded_audio.wav"
     wavfile.write(temp_filename, sample_rate, recording)
-
+    
     return temp_filename
-
 
 def encrypt_audio(file_path, public_key_path):
     try:
         # Load the public key
         with open(public_key_path, "rb") as f:
-            public_key = serialization.load_pem_public_key(
-                f.read(), backend=default_backend()
-            )
+            public_key = serialization.load_pem_public_key(f.read(), backend=default_backend())
 
         # Read the audio file
-        with wave.open(file_path, "rb") as wave_file:
+        with wave.open(file_path, 'rb') as wave_file:
             # Get audio parameters
             nchannels = wave_file.getnchannels()
             sampwidth = wave_file.getsampwidth()
             framerate = wave_file.getframerate()
-            nframes = wave_file.getnframes()
-
+            
             # Read audio data
-            audio_data = wave_file.readframes(nframes)
+            audio_data = wave_file.readframes(wave_file.getnframes())
 
-        # Convert audio data to list of samples
-        samples = []
-        for i in range(0, len(audio_data), sampwidth):
-            sample = int.from_bytes(
-                audio_data[i : i + sampwidth], byteorder="little", signed=True
-            )
-            samples.append(sample)
-
-        # Convert samples to bytes for encryption, using 4 bytes per sample
-        samples_bytes = b"".join(
-            sample.to_bytes(4, "little", signed=True) for sample in samples
-        )
-
+        # Convert to numpy array for better handling
+        audio_array = np.frombuffer(audio_data, dtype=np.int16)
+        audio_bytes = audio_array.tobytes()
+        
         # Create header with audio parameters
-        header = f"{nchannels},{sampwidth},{framerate},{len(samples)}".encode()
-        header_len = len(header).to_bytes(4, "big")
+        header = f"{nchannels},{sampwidth},{framerate},{len(audio_array)}".encode()
+        header_len = len(header).to_bytes(4, 'big')
 
-        # Combine header and samples
-        data_to_encrypt = header_len + header + samples_bytes
+        # Combine header and audio data
+        data_to_encrypt = header_len + header + audio_bytes
 
-        # Encrypt in chunks
-        chunk_size = 446  # Max size for RSA-4096
-        chunks = [
-            data_to_encrypt[i : i + chunk_size]
-            for i in range(0, len(data_to_encrypt), chunk_size)
-        ]
-
+        # Split into chunks and encrypt
+        # Reduce chunk size to account for length prefix (2 bytes)
+        chunk_size = 444  # 446 - 2 bytes for length prefix
+        chunks = [data_to_encrypt[i:i + chunk_size] 
+                 for i in range(0, len(data_to_encrypt), chunk_size)]
+        
         encrypted_chunks = []
         total_chunks = len(chunks)
         for i, chunk in enumerate(chunks, 1):
             print(f"Encrypting chunk {i}/{total_chunks}")
-            if len(chunk) < chunk_size:
-                chunk = chunk + b"\0" * (chunk_size - len(chunk))
-
+            
+            # Add length prefix to chunk
+            chunk_length = len(chunk).to_bytes(2, 'big')
+            chunk_with_length = chunk_length + chunk
+            
+            # No need for additional padding as OAEP padding will handle it
             encrypted_chunk = public_key.encrypt(
-                chunk,
+                chunk_with_length,
                 padding.OAEP(
                     mgf=padding.MGF1(algorithm=hashes.SHA256()),
                     algorithm=hashes.SHA256(),
-                    label=None,
-                ),
+                    label=None
+                )
             )
             encrypted_chunks.append(encrypted_chunk)
 
-        encrypted_data = b"".join(encrypted_chunks)
+        # Combine all encrypted chunks
+        encrypted_data = b''.join(encrypted_chunks)
 
         # Save encrypted data
         with open("encrypted_audio.bin", "wb") as f:
@@ -147,7 +132,6 @@ def encrypt_audio(file_path, public_key_path):
         traceback.print_exc()
         return False
 
-
 def decrypt_audio(encrypted_audio_path, private_key_path):
     try:
         # Load the private key
@@ -160,110 +144,54 @@ def decrypt_audio(encrypted_audio_path, private_key_path):
         with open(encrypted_audio_path, "rb") as f:
             encrypted_data = f.read()
 
-        # Decrypt in chunks
-        chunk_size = 446  # RSA-4096 encrypted chunk size
-        encrypted_chunks = [
-            encrypted_data[i : i + chunk_size]
-            for i in range(0, len(encrypted_data), chunk_size)
-        ]
-
+        # Split into chunks and decrypt
+        chunk_size = 512  # RSA-4096 encrypted chunk size
+        encrypted_chunks = [encrypted_data[i:i + chunk_size] 
+                          for i in range(0, len(encrypted_data), chunk_size)]
+        
         decrypted_chunks = []
         total_chunks = len(encrypted_chunks)
         for i, chunk in enumerate(encrypted_chunks, 1):
             print(f"Decrypting chunk {i}/{total_chunks}")
-            try:
-                decrypted_chunk = private_key.decrypt(
-                    chunk,
-                    padding.OAEP(
-                        mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                        algorithm=hashes.SHA256(),
-                        label=None,
-                    ),
+            
+            # Decrypt the chunk
+            decrypted_chunk = private_key.decrypt(
+                chunk,
+                padding.OAEP(
+                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                    algorithm=hashes.SHA256(),
+                    label=None
                 )
-                decrypted_chunks.append(decrypted_chunk.rstrip(b"\0"))
-            except Exception as e:
-                print(f"Warning: Error decrypting chunk {i}: {e}")
-                # Add silence for corrupted chunks
-                decrypted_chunks.append(
-                    b"\0" * 446
-                )  # Same size as encryption chunk
+            )
+            
+            # Extract original length and data
+            chunk_length = int.from_bytes(decrypted_chunk[:2], 'big')
+            actual_data = decrypted_chunk[2:2+chunk_length]
+            decrypted_chunks.append(actual_data)
 
-        decrypted_data = b"".join(decrypted_chunks)
+        # Combine all decrypted chunks
+        decrypted_data = b''.join(decrypted_chunks)
 
         # Extract header
-        header_len = int.from_bytes(decrypted_data[:4], "big")
-        header = decrypted_data[4 : 4 + header_len].decode().split(",")
+        header_len = int.from_bytes(decrypted_data[:4], 'big')
+        header = decrypted_data[4:4+header_len].decode().split(',')
         nchannels, sampwidth, framerate, nsamples = map(int, header)
 
-        # Extract samples data
-        samples_bytes = decrypted_data[4 + header_len :]
+        # Extract audio data
+        audio_bytes = decrypted_data[4+header_len:]
 
-        # Convert back to audio samples with error handling
-        samples = []
-        for i in range(0, len(samples_bytes), 4):
-            try:
-                if i + 4 <= len(samples_bytes):
-                    sample = int.from_bytes(
-                        samples_bytes[i : i + 4], "little", signed=True
-                    )
+        # Convert to numpy array
+        audio_array = np.frombuffer(audio_bytes, dtype=np.int16)
+        
+        # Ensure correct number of samples
+        audio_array = audio_array[:nsamples]
 
-                    # Normalize the sample value
-                    max_value = (1 << (sampwidth * 8 - 1)) - 1
-                    min_value = -(1 << (sampwidth * 8 - 1))
-
-                    # Apply smoothing
-                    if len(samples) > 0:
-                        prev_sample = samples[-1]
-                        # Smooth sudden large changes
-                        if abs(sample - prev_sample) > max_value / 4:
-                            sample = (sample + prev_sample) // 2
-
-                    # Clamp the value
-                    sample = max(min(sample, max_value), min_value)
-                    samples.append(sample)
-            except Exception as e:
-                print(f"Warning: Error processing sample at position {i}: {e}")
-                # Add silence for corrupted samples
-                samples.append(0)
-
-        # Apply a simple low-pass filter
-        filtered_samples = []
-        window_size = 3
-        for i in range(len(samples)):
-            if i < window_size:
-                filtered_samples.append(samples[i])
-            else:
-                # Calculate moving average
-                window = samples[i - window_size : i]
-                filtered_sample = sum(window) // len(window)
-                filtered_samples.append(filtered_sample)
-
-        # Convert samples back to audio data
-        audio_data = bytearray()
-        for sample in filtered_samples[:nsamples]:
-            try:
-                sample_bytes = sample.to_bytes(
-                    sampwidth, "little", signed=True
-                )
-                audio_data.extend(sample_bytes)
-            except OverflowError:
-                # Handle overflow by clamping
-                if sample > 0:
-                    sample_bytes = ((1 << (sampwidth * 8 - 1)) - 1).to_bytes(
-                        sampwidth, "little", signed=True
-                    )
-                else:
-                    sample_bytes = (-(1 << (sampwidth * 8 - 1))).to_bytes(
-                        sampwidth, "little", signed=True
-                    )
-                audio_data.extend(sample_bytes)
-
-        # Save as WAV with error checking
+        # Save as WAV
         with wave.open("decrypted_audio.wav", "wb") as wave_file:
             wave_file.setnchannels(nchannels)
             wave_file.setsampwidth(sampwidth)
             wave_file.setframerate(framerate)
-            wave_file.writeframes(bytes(audio_data))
+            wave_file.writeframes(audio_array.tobytes())
 
         return True
 
@@ -272,35 +200,30 @@ def decrypt_audio(encrypted_audio_path, private_key_path):
         traceback.print_exc()
         return False
 
-
 # Main execution
 try:
     # Record the audio
-    print(
-        "This program will record your voice, encrypt it, play the encrypted version, and then decrypt it."
-    )
+    print("This program will record your voice, encrypt it, play the encrypted version, and then decrypt it.")
     audio_file_path = record_audio(duration=3)  # Records for 3 seconds
-
+    
     if encrypt_audio(audio_file_path, "public_key.pem"):
         print("Encryption completed successfully")
-
+        
         # Play the encrypted data (will sound like noise)
         print("\nPlaying encrypted audio (should sound like noise)...")
         with wave.open("temp_encrypted.wav", "wb") as wave_file:
             wave_file.setnchannels(2)
             wave_file.setsampwidth(2)
             wave_file.setframerate(44100)
-
+            
             # Read encrypted data and ensure it's a valid length
             with open("encrypted_audio.bin", "rb") as f:
                 encrypted_data = f.read()
                 # Ensure the data length is even
                 if len(encrypted_data) % 2 != 0:
                     encrypted_data = encrypted_data[:-1]
-                wave_file.writeframes(
-                    encrypted_data[: len(encrypted_data) // 4]
-                )
-
+                wave_file.writeframes(encrypted_data[:len(encrypted_data)//4])
+        
         try:
             # Play at reduced volume
             print("Playing encrypted audio at reduced volume...")
@@ -310,14 +233,14 @@ try:
             time.sleep(1)
         except Exception as e:
             print(f"Error playing encrypted audio: {e}")
-
+        
         # Clean up temporary file
         if os.path.exists("temp_encrypted.wav"):
             os.remove("temp_encrypted.wav")
-
+        
         print("\nNow decrypting...")
         time.sleep(1)
-
+        
         if decrypt_audio("encrypted_audio.bin", "private_key.pem"):
             print("Decryption completed successfully")
             print("\nPlaying decrypted audio...")
