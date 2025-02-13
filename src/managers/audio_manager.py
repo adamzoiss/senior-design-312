@@ -13,7 +13,7 @@ import wave
 import numpy as np
 import os
 
-from crypto_manager import CryptoManager
+from src.managers.crypto_manager import CryptoManager
 from src.utils.utils import *
 
 # Path and file names for the file types.
@@ -433,7 +433,14 @@ if __name__ == "__main__":
         elif choice == "2":
             handler.record_audio()
         elif choice == "3":
-            handler.record_encrypted_audio()
+            # handler.record_encrypted_audio()
+            choice = input("AES or RSA? (1/2): ").strip()
+            if choice == "1":
+                handler.record_encrypted_audio()
+            elif choice == "2":
+                print("Not available yet.")
+            else:
+                print("Invalid choice.")
         elif choice == "4":
             handler.find_devices()
         elif choice == "5":
@@ -441,8 +448,13 @@ if __name__ == "__main__":
         elif choice == "6":
             handler.decrypt_audio_file()
         elif choice == "7":
-            handler.decrypt_audio_file_chunked()
-
+            choice = input("AES or RSA? (1/2): ").strip()
+            if choice == "1":
+                handler.decrypt_audio_file_chunked()
+            elif choice == "2":
+                print("Not available yet.")
+            else:
+                print("Invalid choice.")
         else:
             print("Invalid choice.")
     finally:

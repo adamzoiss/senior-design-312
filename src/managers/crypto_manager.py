@@ -37,6 +37,8 @@ Other modes:
 
 import sys
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives import serialization, hashes
 
 from src.utils.utils import *
 
@@ -55,7 +57,12 @@ class CryptoManager:
         The AES cipher for encryption and decryption.
     """
 
-    def __init__(self, key_file="/keys/aes.txt"):
+    def __init__(
+        self,
+        key_file="/keys/aes.txt",
+        public_key_file="/keys/public_key.pem",
+        private_key_file="/keys/private_key.pem",
+    ):
         """
         Initialize the CryptoManager instance.
 
@@ -65,7 +72,11 @@ class CryptoManager:
             Path to the file containing the AES key and IV.
         """
         self.key_file = str(get_proj_root()) + key_file
+        self.private_key_file = str(get_proj_root()) + private_key_file
+        self.public_key_file = str(get_proj_root()) + public_key_file
+
         self.key, self.iv = self._load_key_iv()
+        self.public_key, self.private_key = self._load_rsa_keys()
         self.cipher = Cipher(algorithms.AES(self.key), modes.CFB(self.iv))
 
     def _load_key_iv(self):
@@ -83,6 +94,28 @@ class CryptoManager:
                 iv = bytes.fromhex(f.readline().strip())
                 print("Key and IV loaded from file.")
                 return key, iv
+        except Exception as e:
+            print(f"Exception thrown: {e}\nExiting program...")
+            sys.exit()
+
+    def _load_rsa_keys(self):
+        """
+        Load the RSA public and private keys from files.
+
+        Returns
+        -------
+        tuple
+            A tuple containing the RSA public key and private key.
+        """
+        try:
+            with open(self.public_key_file, "rb") as f:
+                public_key = serialization.load_pem_public_key(f.read())
+            with open(self.private_key_file, "rb") as f:
+                private_key = serialization.load_pem_private_key(
+                    f.read(), password=None
+                )
+            print("RSA keys loaded from files.")
+            return public_key, private_key
         except Exception as e:
             print(f"Exception thrown: {e}\nExiting program...")
             sys.exit()

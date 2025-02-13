@@ -5,3 +5,6 @@ __pycache__
 .vscode
 
 audio_files
+
+*.bin
+*.wav
