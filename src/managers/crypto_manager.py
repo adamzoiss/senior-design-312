@@ -37,8 +37,8 @@ Other modes:
 
 import sys
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives import serialization, hashes
 
 from src.utils.utils import *
 
@@ -108,9 +108,9 @@ class CryptoManager:
             A tuple containing the RSA public key and private key.
         """
         try:
-            with open("public_key.pem", "rb") as f:
+            with open(self.public_key_file, "rb") as f:
                 public_key = serialization.load_pem_public_key(f.read())
-            with open("private_key.pem", "rb") as f:
+            with open(self.private_key_file, "rb") as f:
                 private_key = serialization.load_pem_private_key(
                     f.read(), password=None
                 )

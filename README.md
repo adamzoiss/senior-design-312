@@ -13,7 +13,7 @@ __Files & Notes:__ [SharePoint](https://fsu-my.sharepoint.com/personal/amw21i_fs
 
 2. [Coding Environment](#coding-environment)
 
-3. [Running the Code](#running-the-program)
+3. [Running the Code](#running-the-code)
 
 4. [Documenting Python Code](#documenting-python-code)
     
@@ -196,6 +196,11 @@ ___
     ```bash
     export PYTHONPATH="/path/to/repo"
     ```
+    > For windows (run this in powershell):
+    ```powershell
+    $env:PYTHONPATH = "C:\path\to\your\modules"
+    ```
+
 
 * Running each program individually should work now.
 
