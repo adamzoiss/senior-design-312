@@ -145,7 +145,7 @@ class AudioManager:
         finally:
             self._close_streams()
 
-    def record_audio(self, output_file=AUDIO_FILE):
+    def record_audio(self, output_file=AUDIO_FILE, monitoring = False):
         """
         Record audio from the microphone and save it to a WAV file.
 
@@ -177,7 +177,8 @@ class AudioManager:
                     )
                     frames.append(data)
                     # Playback the captured data
-                    self.output_stream.write(data)
+                    if (monitoring):
+                        self.output_stream.write(data)
             except KeyboardInterrupt:
                 print("\nRecording stopped.")
                 # Save recorded audio to a WAV file
@@ -192,7 +193,7 @@ class AudioManager:
         finally:
             self._close_streams()
 
-    def record_encrypted_audio(self, output_file=ENCRYPTED_AUDIO_STREAM_FILE):
+    def record_encrypted_audio(self, output_file=ENCRYPTED_AUDIO_STREAM_FILE, monitoring = False):
         """
         Record audio, encrypt it, and save it to a file.
 
@@ -223,7 +224,8 @@ class AudioManager:
                     )
                     encrypted_data = self.encryptor.encrypt(data)
                     frames.append(encrypted_data)
-                    self.output_stream.write(data)
+                    if(monitoring):
+                        self.output_stream.write(data)
             except KeyboardInterrupt:
                 print("\nRecording stopped.")
                 with wave.open(output_file, "wb") as wf:
