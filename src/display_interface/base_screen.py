@@ -34,7 +34,7 @@ class Screen:
         """
         self.display = display
 
-        self.SELECTIONS = {"NO_SELECTION": None, "BACK": -1}
+        self.SELECTIONS = {"NO_SELECTION": None}
 
         self.CURRENT_SELECTION: int = self.SELECTIONS["NO_SELECTION"]
 
@@ -53,12 +53,16 @@ class Screen:
 
         Y_START = 25
         Y_H_OFFSET = 3
+        if selection is None:
+            selection = "NO_SELECTION"
+
         if selection in self.SELECTIONS:
             self.CURRENT_SELECTION = self.SELECTIONS[selection]
             if self.CURRENT_SELECTION is None:
-                print("No arrow should appear")
+                # No arrow should print
+                pass
             elif self.CURRENT_SELECTION < 0:
-                # print("Do Nothing")
+                # Do nothing
                 pass
             else:
                 y_offset = self.SELECTIONS[selection]

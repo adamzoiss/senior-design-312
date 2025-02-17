@@ -89,26 +89,26 @@ if __name__ == "__main__":
     # Example Usage
     display = SSD1306()
     navigation = NavigationManager(display)
-    display.clear_screen()
+    navigation.display.clear_screen()
     #####################################
     navigation.get_screen(Menu)
     navigation.select("SETTINGS")
     navigation.select("MODE")
 
     # display.display_image()
-    # display.clear_screen()
+    navigation.display.clear_screen()
     # #####################################
-    # navigation.get_screen(Mode)
-    # navigation.select("RADIO")
-    # navigation.select("LOCAL")
-    # navigation.select("DEBUG")
+    navigation.get_screen(Mode)
+    navigation.select("RADIO")
+    navigation.select("LOCAL")
+    navigation.select("DEBUG")
 
     # display.display_image()
     # display.clear_screen()
     #####################################
     # Draw horizontal lines
-    display.draw_line(0, 15, 127, 15, fill=1)
-    display.draw_line(0, 16, 127, 16, fill=1)
+    # display.draw_line(0, 15, 127, 15, fill=1)
+    # display.draw_line(0, 16, 127, 16, fill=1)
     display.display_image()
     # display.image.save("your_image.png")
     #####################################

@@ -175,6 +175,10 @@ class SSD1306:
             If `self.image` is not defined or does not have a `load` method.
         """
         buffer = []
+
+        self.draw_line(0, 15, 127, 15, fill=1)
+        self.draw_line(0, 16, 127, 16, fill=1)
+
         pixels = self.image.load()
 
         for page in range(0, self.height, 8):  # 8 rows per page
