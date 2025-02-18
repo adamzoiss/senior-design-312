@@ -12,6 +12,7 @@ import pyaudio
 import wave
 import numpy as np
 import os
+import threading
 
 from src.managers.crypto_manager import CryptoManager
 from src.utils.utils import *
@@ -68,14 +69,40 @@ class AudioManager:
         self.RATE = 44100
 
         self.audio = pyaudio.PyAudio()
-        self.input_device_index = 1  # THIS VALUE CAN CHANGE
-        self.output_device_index = 2  # THIS VALUE CAN CHANGE
+        self.input_device_index = 0  # THIS VALUE CAN CHANGE
+        self.output_device_index = 0  # THIS VALUE CAN CHANGE
 
         self.input_stream = None
         self.output_stream = None
 
         # Initialize the encryptor
         self.encryptor = CryptoManager()
+
+        self.TX_EVENT = threading.Event()
+        self.thread = None
+
+    def start_thread(self):
+        """
+        Start a new thread to monitor audio.
+
+        This method starts a new thread that runs the `monitor_audio` method.
+        """
+        print("Starting thread")
+        self.TX_EVENT.clear()  # Reset the tx event
+        self.thread = threading.Thread(target=self.monitor_audio, daemon=True)
+        self.thread.start()
+
+    def stop_thread(self):
+        """
+        Stop the currently running audio monitoring thread.
+
+        This method sets the event to stop the thread and waits for it to finish.
+        """
+        print("Stopping thread")
+        self.TX_EVENT.set()
+        if self.thread:
+            self.thread.join()
+            print("Thread stopped")
 
     def find_devices(self):
         """
@@ -90,23 +117,29 @@ class AudioManager:
         Open the audio input and output streams.
         """
         # Configure and open the input stream
-        self.input_stream = self.audio.open(
-            format=self.FORMAT,
-            channels=self.CHANNELS,
-            rate=self.RATE,
-            input=True,
-            input_device_index=self.input_device_index,
-            frames_per_buffer=self.CHUNK,
-        )
+        try:
+            self.input_stream = self.audio.open(
+                format=self.FORMAT,
+                channels=self.CHANNELS,
+                rate=self.RATE,
+                input=True,
+                input_device_index=self.input_device_index,
+                frames_per_buffer=self.CHUNK,
+            )
+        except Exception as e:
+            print(f"Encountered exception with input stream: {e}")
         # Configure and open the output stream
-        self.output_stream = self.audio.open(
-            format=self.FORMAT,
-            channels=self.CHANNELS,
-            rate=self.RATE,
-            output=True,
-            output_device_index=self.output_device_index,
-            frames_per_buffer=self.CHUNK,
-        )
+        try:
+            self.output_stream = self.audio.open(
+                format=self.FORMAT,
+                channels=self.CHANNELS,
+                rate=self.RATE,
+                output=True,
+                output_device_index=self.output_device_index,
+                frames_per_buffer=self.CHUNK,
+            )
+        except Exception as e:
+            print(f"Encountered exception with output stream: {e}")
 
     def _close_streams(self):
         """
@@ -135,17 +168,19 @@ class AudioManager:
         print("Monitoring audio... Press Ctrl+C to stop.")
         self._open_streams()
         try:
-            while True:
+            while not self.TX_EVENT.is_set():
                 data = self.input_stream.read(
                     self.CHUNK, exception_on_overflow=False
                 )
-                self.output_stream.write(data)
+                encrypted_data = self.encryptor.encrypt(data)
+                decrypted_data = self.encryptor.decrypt(encrypted_data)
+                self.output_stream.write(decrypted_data)
         except KeyboardInterrupt:
             print("\nMonitoring stopped.")
         finally:
             self._close_streams()
 
-    def record_audio(self, output_file=AUDIO_FILE, monitoring = False):
+    def record_audio(self, output_file=AUDIO_FILE, monitoring=False):
         """
         Record audio from the microphone and save it to a WAV file.
 
@@ -153,6 +188,8 @@ class AudioManager:
         ----------
         output_file : str, optional
             The name of the output WAV file (default is "recorded_audio.wav").
+        monitoring : bool, optional
+            If True, play back the recorded audio while recording (default is False).
         """
         # Get the parent directory of the current script
         parent_dir = get_proj_root()
@@ -177,7 +214,7 @@ class AudioManager:
                     )
                     frames.append(data)
                     # Playback the captured data
-                    if (monitoring):
+                    if monitoring:
                         self.output_stream.write(data)
             except KeyboardInterrupt:
                 print("\nRecording stopped.")
@@ -193,7 +230,9 @@ class AudioManager:
         finally:
             self._close_streams()
 
-    def record_encrypted_audio(self, output_file=ENCRYPTED_AUDIO_STREAM_FILE, monitoring = False):
+    def record_encrypted_audio(
+        self, output_file=ENCRYPTED_AUDIO_STREAM_FILE, monitoring=False
+    ):
         """
         Record audio, encrypt it, and save it to a file.
 
@@ -201,6 +240,8 @@ class AudioManager:
         ----------
         output_file : str, optional
             The name of the output encrypted file (default is "recorded_audio_encrypted.wav").
+        monitoring : bool, optional
+            If True, play back the recorded audio while recording (default is False).
         """
         # Get the parent directory of the current script
         parent_dir = get_proj_root()
@@ -224,7 +265,7 @@ class AudioManager:
                     )
                     encrypted_data = self.encryptor.encrypt(data)
                     frames.append(encrypted_data)
-                    if(monitoring):
+                    if monitoring:
                         self.output_stream.write(data)
             except KeyboardInterrupt:
                 print("\nRecording stopped.")
