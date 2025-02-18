@@ -89,6 +89,6 @@ class GPIOInterface:
         # Alerts for the switches
         lgpio.gpio_claim_alert(self.handle, SW_1, lgpio.RISING_EDGE)
         lgpio.gpio_claim_alert(self.handle, SW_2, lgpio.RISING_EDGE)
-        lgpio.gpio_claim_alert(self.handle, SW_3, lgpio.RISING_EDGE)
+        lgpio.gpio_claim_alert(self.handle, SW_3, lgpio.BOTH_EDGES)
         lgpio.gpio_claim_alert(self.handle, SW_4, lgpio.RISING_EDGE)
         lgpio.gpio_claim_alert(self.handle, SW_5, lgpio.RISING_EDGE)
