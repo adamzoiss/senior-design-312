@@ -57,8 +57,6 @@ class InterfaceManager(GPIOInterface):
         """
         # Call base class constructor
         super().__init__(chip_number)
-        # Initialize the callbacks
-        self._init_callbacks()
         #################################################
         # Position variable for menu navigation
         self.position = -1
@@ -83,7 +81,6 @@ class InterfaceManager(GPIOInterface):
         Cleans up resources and cancels callbacks.
         """
         super().__del__()
-        self._cancel_callbacks()
 
     def _encoder_callback(self, chip, gpio, level, timestamp):
         """
@@ -107,14 +104,12 @@ class InterfaceManager(GPIOInterface):
                 # Lower bound for valid encoder position
                 if self.position >= 0:
                     self.position -= 1
-                # print(f"Position: {self.position}, dir=ccw")
         elif gpio == ENC_B:
             # Check for if the encoder has been moved clockwise
             if self.last_state_b != level:
                 # Upper bound for valid encoder position
                 if self.position < len(self.nav.CURRENT_SCREEN.SELECTIONS) - 1:
                     self.position += 1
-                # print(f"Position: {self.position}, dir=cw")
 
         # Update last states for the encoders
         self.last_state_a = level
@@ -158,16 +153,8 @@ class InterfaceManager(GPIOInterface):
             print(f"SW2: {level}")
         elif gpio == SW_3:
             print(f"SW3: {level}")
-            # if level == 1:
-            #     self.audio_man.stop_thread()
-
-            # else:
-            #     if (
-            #         self.audio_man.thread is None
-            #         or not self.audio_man.thread.is_alive()
-            #     ):
-            #         self.audio_man.start_thread()
-
+            # Checks if switch is pressed, and if so monitors audio
+            # TODO Have tx rx implementation
             match level:
                 case 0:
                     if (
@@ -193,50 +180,6 @@ class InterfaceManager(GPIOInterface):
                 self.nav.display.display_image()
                 self.position = -1
         print("-" * 20)
-
-    def _init_callbacks(self):
-        """
-        Initializes the GPIO callbacks.
-
-        This method sets up the callbacks for the rotary encoder and push buttons.
-        """
-        # Encoder callbacks
-        self.enc_a_cb = lgpio.callback(
-            self.handle, ENC_A, lgpio.BOTH_EDGES, self._encoder_callback
-        )
-        self.enc_b_cb = lgpio.callback(
-            self.handle, ENC_B, lgpio.BOTH_EDGES, self._encoder_callback
-        )
-        # Switch callbacks
-        self.sw1_cb = lgpio.callback(
-            self.handle, SW_1, lgpio.RISING_EDGE, self._switch_callback
-        )
-        self.sw2_cb = lgpio.callback(
-            self.handle, SW_2, lgpio.RISING_EDGE, self._switch_callback
-        )
-        self.sw3_cb = lgpio.callback(
-            self.handle, SW_3, lgpio.BOTH_EDGES, self._switch_callback
-        )
-        self.sw4_cb = lgpio.callback(
-            self.handle, SW_4, lgpio.RISING_EDGE, self._switch_callback
-        )
-        self.sw5_cb = lgpio.callback(
-            self.handle, SW_5, lgpio.RISING_EDGE, self._switch_callback
-        )
-
-    def _cancel_callbacks(self):
-        """
-        Cancels the GPIO callbacks.
-
-        This method cancels the callbacks for the rotary encoder and push buttons.
-        """
-        self.enc_a_cb.cancel()
-        self.enc_b_cb.cancel()
-        self.sw1_cb.cancel()
-        self.sw2_cb.cancel()
-        self.sw3_cb.cancel()
-        self.sw4_cb.cancel()
-        self.sw5_cb.cancel()
 
 
 if __name__ == "__main__":

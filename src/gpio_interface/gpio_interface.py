@@ -42,14 +42,19 @@ class GPIOInterface:
             The chip number for the GPIO interface. Defaults to 0.
         """
         self.handle = lgpio.gpiochip_open(chip_number)
+        # Initialize GPIO
         self._init_gpio()
+        # Initialize alerts
         self._init_alerts()
+        # Initialize the callbacks
+        self._init_callbacks()
 
     def __del__(self):
         """
         Closes the GPIO chip handle.
         """
         lgpio.gpiochip_close(self.handle)
+        self._cancel_callbacks()
 
     def _init_gpio(self):
         """
@@ -92,3 +97,67 @@ class GPIOInterface:
         lgpio.gpio_claim_alert(self.handle, SW_3, lgpio.BOTH_EDGES)
         lgpio.gpio_claim_alert(self.handle, SW_4, lgpio.RISING_EDGE)
         lgpio.gpio_claim_alert(self.handle, SW_5, lgpio.RISING_EDGE)
+
+    def _encoder_callback(self, chip, gpio, level, timestamp):
+        print(
+            (
+                f"Chip: {chip} | "
+                f"GPIO{gpio} | "
+                f"Level: {level} | "
+                f"Timestamp: {timestamp}"
+            )
+        )
+
+    def _switch_callback(self, chip, gpio, level, timestamp):
+        print(
+            (
+                f"Chip: {chip} | "
+                f"GPIO{gpio} | "
+                f"Level: {level} | "
+                f"Timestamp: {timestamp}"
+            )
+        )
+
+    def _init_callbacks(self):
+        """
+        Initializes the GPIO callbacks.
+
+        This method sets up the callbacks for the rotary encoder and push buttons.
+        """
+        # Encoder callbacks
+        self.enc_a_cb = lgpio.callback(
+            self.handle, ENC_A, lgpio.BOTH_EDGES, self._encoder_callback
+        )
+        self.enc_b_cb = lgpio.callback(
+            self.handle, ENC_B, lgpio.BOTH_EDGES, self._encoder_callback
+        )
+        # Switch callbacks
+        self.sw1_cb = lgpio.callback(
+            self.handle, SW_1, lgpio.RISING_EDGE, self._switch_callback
+        )
+        self.sw2_cb = lgpio.callback(
+            self.handle, SW_2, lgpio.RISING_EDGE, self._switch_callback
+        )
+        self.sw3_cb = lgpio.callback(
+            self.handle, SW_3, lgpio.BOTH_EDGES, self._switch_callback
+        )
+        self.sw4_cb = lgpio.callback(
+            self.handle, SW_4, lgpio.RISING_EDGE, self._switch_callback
+        )
+        self.sw5_cb = lgpio.callback(
+            self.handle, SW_5, lgpio.RISING_EDGE, self._switch_callback
+        )
+
+    def _cancel_callbacks(self):
+        """
+        Cancels the GPIO callbacks.
+
+        This method cancels the callbacks for the rotary encoder and push buttons.
+        """
+        self.enc_a_cb.cancel()
+        self.enc_b_cb.cancel()
+        self.sw1_cb.cancel()
+        self.sw2_cb.cancel()
+        self.sw3_cb.cancel()
+        self.sw4_cb.cancel()
+        self.sw5_cb.cancel()
