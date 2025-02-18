@@ -9,26 +9,26 @@ Description: This will handle the interface with the rpi. GPIO pins will be set 
 import lgpio
 import time
 from src.managers.navigation_manager import *
+from src.gpio_interface.gpio_interface import *
 
 
-class InterfaceManager:
+class InterfaceManager(GPIOInterface):
     def __init__(self, chip_number=0):
-        self.handle = lgpio.gpiochip_open(chip_number)
-
-        self._init_gpio()
-        self._init_alerts()
+        # Call base class constructor
+        super().__init__(chip_number)
+        # Initialize the callbacks
         self._init_callbacks()
-
-        # position variable
+        #################################################
+        # Position variable for menu navigation
         self.position = -1
         # Last state values for the encoders
         self.last_state_a = 0
         self.last_state_b = 0
-        # States for the switches
-        # bit positions represent switches where SW_5 is the MSB
+        # States for the switches - Bit positions represent switches
+        #   where SW_5 is the MSB
         self.sw_states = 0b00000
-
-        ##################################################
+        #################################################
+        # Display set up
         display = SSD1306()
         self.nav = NavigationManager(display)
         self.nav.display.clear_screen()
@@ -37,83 +37,31 @@ class InterfaceManager:
         ##################################################
 
     def __del__(self):
-        lgpio.gpiochip_close(self.handle)
+        super().__del__()
         self._cancel_callbacks()
 
-    def _init_gpio(self):
-        # Initializing the rotary encoder
-        lgpio.gpio_claim_input(self.handle, ENC_A, lgpio.SET_PULL_UP)
-        lgpio.gpio_claim_input(self.handle, ENC_B, lgpio.SET_PULL_UP)
-        # Initializing the push buttons
-        lgpio.gpio_claim_input(self.handle, SW_1, lgpio.SET_PULL_UP)
-        lgpio.gpio_claim_input(self.handle, SW_2, lgpio.SET_PULL_UP)
-        lgpio.gpio_claim_input(self.handle, SW_3, lgpio.SET_PULL_UP)
-        lgpio.gpio_claim_input(self.handle, SW_4, lgpio.SET_PULL_UP)
-        lgpio.gpio_claim_input(self.handle, SW_5, lgpio.SET_PULL_UP)
-        # Setting debounce for encoders
-        lgpio.gpio_set_debounce_micros(self.handle, ENC_A, DEBOUNCE_MICRO)
-        lgpio.gpio_set_debounce_micros(self.handle, ENC_B, DEBOUNCE_MICRO)
-        # Setting debounce for push buttons
-        lgpio.gpio_set_debounce_micros(self.handle, SW_1, DEBOUNCE_MICRO)
-        lgpio.gpio_set_debounce_micros(self.handle, SW_2, DEBOUNCE_MICRO)
-        lgpio.gpio_set_debounce_micros(self.handle, SW_3, DEBOUNCE_MICRO)
-        lgpio.gpio_set_debounce_micros(self.handle, SW_4, DEBOUNCE_MICRO)
-        lgpio.gpio_set_debounce_micros(self.handle, SW_5, DEBOUNCE_MICRO)
-
-    def _init_alerts(self):
-        # Alerts when the rotary encoder
-        lgpio.gpio_claim_alert(self.handle, ENC_A, lgpio.BOTH_EDGES)
-        lgpio.gpio_claim_alert(self.handle, ENC_B, lgpio.BOTH_EDGES)
-        # Alerts for the switches
-        lgpio.gpio_claim_alert(self.handle, SW_1, lgpio.RISING_EDGE)
-        lgpio.gpio_claim_alert(self.handle, SW_2, lgpio.RISING_EDGE)
-        lgpio.gpio_claim_alert(self.handle, SW_3, lgpio.RISING_EDGE)
-        lgpio.gpio_claim_alert(self.handle, SW_4, lgpio.RISING_EDGE)
-        lgpio.gpio_claim_alert(self.handle, SW_5, lgpio.RISING_EDGE)
-
     def _encoder_callback(self, chip, gpio, level, timestamp):
-        # Logic for reading encoders
+        # Logic for encoder alerts
         if gpio == ENC_A:
+            # Check for if the encoder has been moved counter-clockwise
             if self.last_state_a != level:
-                # if self.position < 5:  # Upper bound for encoder position
-
-                # if (
-                #     self.position < len(self.nav.CURRENT_SCREEN.SELECTIONS) - 1
-                # ):  # Upper bound for encoder position
-                #     self.position += 1
-
+                # Lower bound for valid encoder position
                 if self.position >= 0:
                     self.position -= 1
-
-                print(f"Position: {self.position}, dir=ccw")
-        elif gpio == ENC_B:  # Lower bound for encoder position
+                # print(f"Position: {self.position}, dir=ccw")
+        elif gpio == ENC_B:
+            # Check for if the encoder has been moved clockwise
             if self.last_state_b != level:
-                # if self.position > -5:
-
-                # if self.position >= 0:
-                #     self.position -= 1
-
-                if (
-                    self.position < len(self.nav.CURRENT_SCREEN.SELECTIONS) - 1
-                ):  # Upper bound for encoder position
+                # Upper bound for valid encoder position
+                if self.position < len(self.nav.CURRENT_SCREEN.SELECTIONS) - 1:
                     self.position += 1
+                # print(f"Position: {self.position}, dir=cw")
 
-                print(f"Position: {self.position}, dir=cw")
-
+        # Update last states for the encoders
         self.last_state_a = level
         self.last_state_b = level
-
-        key = next(
-            (
-                k
-                for k, v in self.nav.CURRENT_SCREEN.SELECTIONS.items()
-                if v == self.position
-            ),
-            None,
-        )
-        # print(key)
-
-        self.nav.select(key)
+        # Update menu selection
+        self.nav.update_menu_selection(self.position)
         self.nav.display.display_image()
 
     def _switch_callback(self, chip, gpio, level, timestamp):
@@ -121,11 +69,16 @@ class InterfaceManager:
         if gpio == SW_1:
             print("SW1")
             print(self.nav.CURRENT_SCREEN.CURRENT_SELECTION)
-            if self.position == self.nav.CURRENT_SCREEN.SELECTIONS["MODE"]:
-                self.nav.display.clear_screen()
-                self.nav.get_screen(Mode)
-                self.nav.display.display_image()
-                print("Mode Menu")
+            try:
+                if self.position == self.nav.CURRENT_SCREEN.SELECTIONS["MODE"]:
+                    self.nav.display.clear_screen()
+                    self.nav.get_screen(Mode)
+                    self.nav.display.display_image()
+                    print("Mode Menu")
+                    self.position = -1
+            except KeyError:
+                pass
+
         elif gpio == SW_2:
             self.sw_states ^= 1 << 1
             print("SW2")
@@ -137,6 +90,11 @@ class InterfaceManager:
             print("SW4")
         elif gpio == SW_5:
             self.sw_states ^= 1 << 4
+            if type(self.nav.CURRENT_SCREEN) != Menu:
+                self.nav.display.clear_screen()
+                self.nav.get_screen(Menu)
+                self.nav.display.display_image()
+                self.position = -1
             print("SW5")
         print("-" * 20)
 

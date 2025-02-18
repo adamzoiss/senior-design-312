@@ -84,6 +84,24 @@ class NavigationManager(Menu, Mode):
         self.display.clear_rectangle(x1, y1, x2, y2)
         self.CURRENT_SCREEN.select(selection)
 
+    def update_menu_selection(self, position):
+        """
+        Update the menu selection based on the given position.
+        Args:
+            position (int): The position of the encoder to determine the menu selection.
+        Returns:
+            None
+        """
+        # Get the key for the menu selections based on an integer position
+        selections = self.CURRENT_SCREEN.SELECTIONS.items()
+        # Get the key for the menu selections based on encoder positon
+        key = next(
+            (k for k, v in selections if v == position),
+            None,
+        )
+        # Update the display based on the encoder movements
+        self.select(key)
+
 
 if __name__ == "__main__":
     # Example Usage
@@ -95,7 +113,7 @@ if __name__ == "__main__":
     navigation.select("SETTINGS")
     navigation.select("MODE")
 
-    # display.display_image()
+    # navigation.display.display_image()
     navigation.display.clear_screen()
     # #####################################
     navigation.get_screen(Mode)
@@ -103,12 +121,6 @@ if __name__ == "__main__":
     navigation.select("LOCAL")
     navigation.select("DEBUG")
 
-    # display.display_image()
-    # display.clear_screen()
-    #####################################
-    # Draw horizontal lines
-    # display.draw_line(0, 15, 127, 15, fill=1)
-    # display.draw_line(0, 16, 127, 16, fill=1)
-    display.display_image()
-    # display.image.save("your_image.png")
+    navigation.display.display_image()
+    # navigation.display.image.save("your_image.png")
     #####################################

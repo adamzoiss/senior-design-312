@@ -175,9 +175,31 @@ class SSD1306:
             If `self.image` is not defined or does not have a `load` method.
         """
         buffer = []
-
+        # #####################################
+        # Lines separating yellow from blue segment
         self.draw_line(0, 15, 127, 15, fill=1)
         self.draw_line(0, 16, 127, 16, fill=1)
+        # #####################################
+        # Display interface usage on screen
+        self.draw_circle(102, 40, 10, fill=None)
+        self.draw_circle(102, 40, 23, fill=None)
+        # Switch 1 - Select
+        self.draw_text("SEL", 95, 36, font_size=8)
+        # Switch 2 - Down arrow
+        self.draw_text(
+            "D", 99, 51, font_size=14, font_file="assets/Arrows.ttf"
+        )
+        # Switch 3 - Transmit/Monitor
+        # TODO - implement
+        # Switch 4 - Up arrow
+        self.draw_text(
+            "C", 99, 18, font_size=14, font_file="assets/Arrows.ttf"
+        )
+        # Switch 5 - Return arrow
+        self.draw_rotated_text(
+            "u", 86, 40, angle=90, font_size=12, font_file="assets/arrow_7.ttf"
+        )
+        # #####################################
 
         pixels = self.image.load()
 
@@ -279,7 +301,9 @@ class SSD1306:
         """
         self.write_command(0x2E)  # Stop scrolling
 
-    def draw_text(self, text, x=0, y=0, font_size=12):
+    def draw_text(
+        self, text, x=0, y=0, font_size=12, font_file="assets/arial.ttf"
+    ):
         """
         Draws text on the image at the specified coordinates with the given font size.
 
@@ -301,8 +325,9 @@ class SSD1306:
         """
         try:
             font = ImageFont.truetype(
-                "arial.ttf", font_size
+                font_file, font_size
             )  # Use built-in Arial font
+            # print("Font loaded!")
         except IOError:
             font = ImageFont.load_default()
         self.draw.text((x, y), text, font=font, fill=1)
@@ -325,6 +350,83 @@ class SSD1306:
             The color or pattern to fill the line with. Default is 1.
         """
         self.draw.line([x1, y1, x2, y2], fill=fill)
+
+    def draw_circle(self, x, y, radius, outline=1, fill=0):
+        """
+        Draws a circle on the display.
+
+        Parameters
+        ----------
+        x : int
+            The x-coordinate of the center of the circle.
+        y : int
+            The y-coordinate of the center of the circle.
+        radius : int
+            The radius of the circle.
+        outline : int, optional
+            The color or pattern to outline the circle with. Default is 1.
+        fill : int, optional
+            The color or pattern to fill the circle with. Default is 0.
+        """
+        self.draw.ellipse(
+            (x - radius, y - radius, x + radius, y + radius),
+            outline=outline,
+            fill=fill,
+        )
+
+    def draw_rotated_text(
+        self,
+        text,
+        x=0,
+        y=0,
+        angle=0,
+        font_size=12,
+        font_file="assets/arial.ttf",
+    ):
+        """
+        Draws rotated text on the display at the specified coordinates.
+
+        Parameters
+        ----------
+        text : str
+            The text to be drawn.
+        x : int, optional
+            The x-coordinate of the text. Defaults to 0.
+        y : int, optional
+            The y-coordinate of the text. Defaults to 0.
+        angle : int, optional
+            The angle to rotate the text counterclockwise. Defaults to 0.
+        font_size : int, optional
+            The size of the font. Defaults to 12.
+        font_file : str, optional
+            The font file to use. Defaults to "assets/arial.ttf".
+        """
+        try:
+            font = ImageFont.truetype(font_file, font_size)
+        except IOError:
+            font = ImageFont.load_default()
+
+        # Create a temporary image to render the text
+        text_size = self.draw.textbbox((0, 0), text, font=font)
+        text_width = text_size[2] - text_size[0]
+        text_height = text_size[3] - text_size[1]
+
+        text_image = Image.new("1", (text_width, text_height), color=0)
+        temp_draw = ImageDraw.Draw(text_image)
+        temp_draw.text((0, 0), text, font=font, fill=1)
+
+        # Rotate the text image
+        rotated_text = text_image.rotate(angle, expand=True)
+
+        # Get new dimensions after rotation
+        rotated_width, rotated_height = rotated_text.size
+
+        # Paste the rotated text onto the main image with transparency
+        self.image.paste(
+            rotated_text,
+            (x - rotated_width // 2, y - rotated_height // 2),
+            rotated_text,
+        )
 
 
 if __name__ == "__main__":
