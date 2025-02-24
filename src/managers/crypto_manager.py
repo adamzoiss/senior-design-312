@@ -36,6 +36,7 @@ Other modes:
 """
 
 import sys
+import numpy as np
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import serialization, hashes
@@ -153,6 +154,126 @@ class CryptoManager:
         """
         decryptor = self.cipher.decryptor()
         return decryptor.update(data) + decryptor.finalize()
+    
+
+    ################## Adding stuff for RSA ######################
+    def rsa_encrypt_file(self, audio_data, params):
+        """
+        Encrypt audio file data using RSA.
+
+        Parameters
+        ----------
+        audio_data : bytes
+            The audio data to encrypt
+        params : dict
+            Dictionary containing audio parameters (channels, sampwidth, framerate)
+
+        Returns
+        -------
+        bytes
+            Encrypted audio data with header information
+        """
+        try:
+            # Convert to numpy array for better handling
+            audio_array = np.frombuffer(audio_data, dtype=np.int16)
+            audio_bytes = audio_array.tobytes()
+            
+            # Create header with audio parameters
+            header = f"{params['channels']},{params['sampwidth']},{params['framerate']},{len(audio_array)}".encode()
+            header_len = len(header).to_bytes(4, 'big')
+
+            # Combine header and audio data
+            data_to_encrypt = header_len + header + audio_bytes
+
+            # Split into chunks and encrypt
+            chunk_size = 444  # 446 - 2 bytes for length prefix
+            chunks = [data_to_encrypt[i:i + chunk_size] 
+                    for i in range(0, len(data_to_encrypt), chunk_size)]
+            
+            encrypted_chunks = []
+            for chunk in chunks:
+                chunk_length = len(chunk).to_bytes(2, 'big')
+                chunk_with_length = chunk_length + chunk
+                
+                encrypted_chunk = self.public_key.encrypt(
+                    chunk_with_length,
+                    padding.OAEP(
+                        mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                        algorithm=hashes.SHA256(),
+                        label=None
+                    )
+                )
+                encrypted_chunks.append(encrypted_chunk)
+
+            return b''.join(encrypted_chunks)
+
+        except Exception as e:
+            print(f"RSA encryption error: {e}")
+            return audio_data
+
+    def rsa_decrypt_file(self, encrypted_data):
+        """
+        Decrypt RSA encrypted audio file data.
+
+        Parameters
+        ----------
+        encrypted_data : bytes
+            The encrypted audio data to decrypt.
+
+        Returns
+        -------
+        tuple
+            (decrypted_data, audio_params) where audio_params contains channels, sampwidth, framerate
+        """
+        try:
+            # Split into chunks and decrypt
+            chunk_size = 512  # RSA-4096 encrypted chunk size
+            encrypted_chunks = [encrypted_data[i:i + chunk_size] 
+                            for i in range(0, len(encrypted_data), chunk_size)]
+            
+            decrypted_chunks = []
+            for chunk in encrypted_chunks:
+                decrypted_chunk = self.private_key.decrypt(
+                    chunk,
+                    padding.OAEP(
+                        mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                        algorithm=hashes.SHA256(),
+                        label=None
+                    )
+                )
+                
+                chunk_length = int.from_bytes(decrypted_chunk[:2], 'big')
+                actual_data = decrypted_chunk[2:2+chunk_length]
+                decrypted_chunks.append(actual_data)
+
+            # Combine all decrypted chunks
+            decrypted_data = b''.join(decrypted_chunks)
+
+            # Extract header
+            header_len = int.from_bytes(decrypted_data[:4], 'big')
+            header = decrypted_data[4:4+header_len].decode().split(',')
+            channels, sampwidth, framerate, nsamples = map(int, header)
+
+            # Extract audio data
+            audio_bytes = decrypted_data[4+header_len:]
+
+            # Convert to numpy array
+            audio_array = np.frombuffer(audio_bytes, dtype=np.int16)
+            
+            # Ensure correct number of samples
+            audio_array = audio_array[:nsamples]
+            
+            audio_params = {
+                'channels': channels,
+                'sampwidth': sampwidth,
+                'framerate': framerate
+            }
+            
+            return audio_array.tobytes(), audio_params
+
+        except Exception as e:
+            print(f"RSA decryption error: {e}")
+            return encrypted_data, None
 
 
 if __name__ == "__main__":

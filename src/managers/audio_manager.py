@@ -405,6 +405,105 @@ class AudioManager:
         except Exception as e:
             print(f"An error occurred during decryption: {e}")
 
+    ################# Adding RSA Stuff ########################
+    def encrypt_rsa_file(self, input_file=AUDIO_FILE, output_file=ENCRYPTED_AUDIO_FILE):
+        """
+        Encrypt an audio file using RSA and save the encrypted data to a new file.
+
+        Parameters
+        ----------
+        input_file : str, optional
+            The path to the input audio file to be encrypted
+        output_file : str, optional
+            The path to the output file where the encrypted audio will be saved
+        """
+        # Get the parent directory of the current script
+        parent_dir = get_proj_root()
+        output_dir = os.path.join(parent_dir, PATH)
+        output_file_path = os.path.join(output_dir, os.path.basename(output_file))
+        input_file_path = os.path.join(output_dir, os.path.basename(input_file))
+        
+        # Ensure paths exist
+        ensure_path(str(output_dir))
+
+        # Check if the input file exists
+        if not os.path.exists(input_file_path):
+            print(f"Error: Input file {input_file_path} does not exist.")
+            print("Please record an audio file first using option 2 (Record audio).")
+            return
+
+        try:
+            # Read the audio file
+            with wave.open(input_file_path, 'rb') as wf:
+                # Get audio parameters
+                params = {
+                    'channels': wf.getnchannels(),
+                    'sampwidth': wf.getsampwidth(),
+                    'framerate': wf.getframerate()
+                }
+                # Read audio data
+                audio_data = wf.readframes(wf.getnframes())
+
+            # Encrypt the audio data
+            encrypted_data = self.encryptor.rsa_encrypt_file(audio_data, params)
+
+            # Save encrypted data
+            with open(output_file_path, "wb") as f:
+                f.write(encrypted_data)
+
+            print(f"RSA encrypted audio saved to {output_file}")
+
+        except Exception as e:
+            print(f"An error occurred during encryption: {e}")
+
+    def decrypt_rsa_audio_file(self, input_file=ENCRYPTED_AUDIO_FILE, output_file=DECRYPTED_AUDIO_FILE):
+        """
+        Decrypt an RSA encrypted audio file and save the decrypted audio to a new file.
+
+        Parameters
+        ----------
+        input_file : str, optional
+            The encrypted audio file to decrypt
+        output_file : str, optional
+            The file to save the decrypted audio
+        """
+        parent_dir = get_proj_root()
+        output_dir = os.path.join(parent_dir, PATH)
+        output_file_path = os.path.join(output_dir, os.path.basename(output_file))
+        input_file_path = os.path.join(output_dir, os.path.basename(input_file))
+        
+        # Ensure paths exist
+        ensure_path(str(output_dir))
+
+        # Check if the input file exists
+        if not os.path.exists(input_file_path):
+            print(f"Error: {input_file_path} does not exist.")
+            return
+
+        try:
+            print(f"Decrypting {input_file}...")
+            # Read encrypted data from the file
+            with open(input_file_path, "rb") as encrypted_file:
+                encrypted_data = encrypted_file.read()
+
+            # Decrypt the audio data
+            decrypted_data, audio_params = self.encryptor.rsa_decrypt_file(encrypted_data)
+
+            if audio_params:
+                # Write the decrypted data to a WAV file
+                with wave.open(output_file_path, "wb") as wf:
+                    wf.setnchannels(audio_params['channels'])
+                    wf.setsampwidth(audio_params['sampwidth'])
+                    wf.setframerate(audio_params['framerate'])
+                    wf.writeframes(decrypted_data)
+
+                print(f"Decrypted audio saved to {output_file}")
+            else:
+                print("Decryption failed: Could not recover audio parameters")
+
+        except Exception as e:
+            print(f"An error occurred during decryption: {e}")
+
     def terminate(self):
         """
         Terminate the PyAudio instance.
@@ -424,8 +523,10 @@ if __name__ == "__main__":
     print("5. Encrypt an audio file")
     print("6. Decrypt an audio file")
     print("7. Decrypt an audio stream")
+    print("8. RSA encrypt audio file")
+    print("9. RSA decrypt audio file")
 
-    choice = input("Choose an option (1/2/3/4/5/6/7): ").strip()
+    choice = input("Choose an option (1/2/3/4/5/6/7/8/9): ").strip()
 
     try:
         if choice == "1":
@@ -455,6 +556,10 @@ if __name__ == "__main__":
                 print("Not available yet.")
             else:
                 print("Invalid choice.")
+        elif choice == "8":
+            handler.encrypt_rsa_file()
+        elif choice == "9":
+            handler.decrypt_rsa_audio_file()
         else:
             print("Invalid choice.")
     finally:
