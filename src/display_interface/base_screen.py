@@ -41,6 +41,10 @@ class Screen:
     def __del__(self):
         del self.display
 
+    def update_volume(self, volume_percentage: int):
+        self.display.clear_rectangle(50, 0, 110, 14)
+        self.display.draw_text(f"Vol: {volume_percentage}%", x=50, y=2)
+
     def select(self, selection: str):
         """
         Selects an option and draws an arrow next to it.
@@ -90,9 +94,12 @@ class Screen:
 if __name__ == "__main__":
     # Initialize the display (assuming the SSD1306 class has an appropriate constructor)
     display = SSD1306()
+    screen = Screen(display)
 
     display.clear_screen()
     display.draw_text("Hello, World!", x=0, y=0, font_size=12)
+
+    screen.update_volume(10)
     display.display_image()
 
     import time

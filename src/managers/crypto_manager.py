@@ -41,6 +41,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import serialization, hashes
 
 from src.utils.utils import *
+from src.logging.logging_config import *
 
 
 class CryptoManager:
@@ -71,6 +72,9 @@ class CryptoManager:
         key_file : str, optional
             Path to the file containing the AES key and IV.
         """
+        # Set up logging
+        self.logger: logging = setup_logger("CryptoManager")
+
         self.key_file = str(get_proj_root()) + key_file
         self.private_key_file = str(get_proj_root()) + private_key_file
         self.public_key_file = str(get_proj_root()) + public_key_file
@@ -78,6 +82,8 @@ class CryptoManager:
         self.key, self.iv = self._load_key_iv()
         self.public_key, self.private_key = self._load_rsa_keys()
         self.cipher = Cipher(algorithms.AES(self.key), modes.CFB(self.iv))
+
+        self.logger.info("CryptoManager initialized")
 
     def _load_key_iv(self):
         """
@@ -92,10 +98,10 @@ class CryptoManager:
             with open(self.key_file, "r") as f:
                 key = bytes.fromhex(f.readline().strip())
                 iv = bytes.fromhex(f.readline().strip())
-                print("Key and IV loaded from file.")
+                self.logger.debug("Key and IV loaded from file.")
                 return key, iv
         except Exception as e:
-            print(f"Exception thrown: {e}\nExiting program...")
+            self.logger.error(f"Exception thrown: {e}\nExiting program...")
             sys.exit()
 
     def _load_rsa_keys(self):
@@ -114,10 +120,10 @@ class CryptoManager:
                 private_key = serialization.load_pem_private_key(
                     f.read(), password=None
                 )
-            print("RSA keys loaded from files.")
+            self.logger.debug("RSA keys loaded from files.")
             return public_key, private_key
         except Exception as e:
-            print(f"Exception thrown: {e}\nExiting program...")
+            self.logger.error(f"Exception thrown: {e}\nExiting program...")
             sys.exit()
 
     def encrypt(self, data):

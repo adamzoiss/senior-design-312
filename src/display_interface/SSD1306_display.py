@@ -9,6 +9,7 @@ import fcntl
 import os
 from PIL import Image, ImageDraw, ImageFont
 from src.utils.interface_constants import *
+import struct
 
 
 class SSD1306:
@@ -116,31 +117,29 @@ class SSD1306:
         """
         init_cmds = [
             0xAE,  # Display OFF
-            0x20,
-            0x00,  # Memory Addressing Mode: Horizontal
-            0x21,
-            0x00,
-            0x7F,  # Set Column Address 0-127
-            0x22,
-            0x00,
-            0x07,  # Set Page Address 0-7
+            0xD5,
+            0x80,  # Set display clock divide ratio/oscillator frequency
             0xA8,
-            0x3F,  # Multiplex Ratio: 63
+            0x3F,  # Multiplex ratio (64)
             0xD3,
-            0x00,  # Display Offset: 0
-            0x40,  # Start Line: 0
-            0xA1,  # Segment Re-map
-            0xC8,  # COM Output Scan Direction
+            0x00,  # Display offset
+            0x40,  # Start line (0)
+            0x8D,
+            0x14,  # Enable charge pump
+            0x20,
+            0x00,  # Set memory addressing mode to Horizontal
+            0xA1,  # Segment re-map (mirror horizontally)
+            0xC8,  # COM output scan direction (mirror vertically)
             0xDA,
-            0x12,  # COM Pins Hardware Config
+            0x12,  # Set COM pins hardware configuration
             0x81,
-            0x7F,  # Contrast Control
+            0xCF,  # Set contrast control
             0xD9,
-            0xF1,  # Pre-charge Period
+            0xF1,  # Set pre-charge period
             0xDB,
-            0x40,  # VCOMH Deselect Level
-            0xA4,  # Entire Display ON
-            0xA6,  # Normal Display Mode
+            0x40,  # Set VCOMH deselect level
+            0xA4,  # Output follows RAM content
+            0xA6,  # Normal display mode
             0xAF,  # Display ON
         ]
         for cmd in init_cmds:
@@ -447,6 +446,16 @@ if __name__ == "__main__":
     display.clear_screen()
     display.draw_text("Hello, World!", x=0, y=0, font_size=12)
     display.display_image()
+
+    import time
+
+    display.clear_screen()
+    start_time = time.time()
+    display.draw_text("Hello, World!", x=0, y=0, font_size=12)
+    display.display_image()
+    end_time = time.time()
+    time_taken = (end_time - start_time) * 1_000_000  # Convert to microseconds
+    print(f"Time taken to display image: {time_taken:.2f} microseconds")
 
     import time
 

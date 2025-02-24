@@ -73,8 +73,8 @@ class GPIOInterface:
         lgpio.gpio_claim_input(self.handle, SW_4, lgpio.SET_PULL_UP)
         lgpio.gpio_claim_input(self.handle, SW_5, lgpio.SET_PULL_UP)
         # Setting debounce for encoders
-        lgpio.gpio_set_debounce_micros(self.handle, ENC_A, DEBOUNCE_MICRO)
-        lgpio.gpio_set_debounce_micros(self.handle, ENC_B, DEBOUNCE_MICRO)
+        lgpio.gpio_set_debounce_micros(self.handle, ENC_A, 50)
+        lgpio.gpio_set_debounce_micros(self.handle, ENC_B, 50)
         # Setting debounce for push buttons
         lgpio.gpio_set_debounce_micros(self.handle, SW_1, DEBOUNCE_MICRO)
         lgpio.gpio_set_debounce_micros(self.handle, SW_2, DEBOUNCE_MICRO)
