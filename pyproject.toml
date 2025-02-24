@@ -136,7 +136,9 @@ dependencies = [
             "mypy", 
             "pylance",
             "pyarrow", 
-            "wave"
+            "wave",
+            "pydub",
+            "scipy"
             ]
 
 
