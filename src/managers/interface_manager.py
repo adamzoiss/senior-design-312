@@ -6,7 +6,6 @@ Description: This will handle the interface with the rpi. GPIO pins will be set 
     and the interface will be handled through this class.
 """
 
-import lgpio
 import time
 from src.managers.navigation_manager import *
 from src.gpio_interface.gpio_interface import *
@@ -65,8 +64,8 @@ class InterfaceManager(GPIOInterface):
         self.last_state_b = 0
         #################################################
         # Display set up
-        display = SSD1306()
-        self.nav = NavigationManager(display)
+        self.display = SSD1306()
+        self.nav = NavigationManager(self.display)
         self.nav.display.clear_screen()
         self.nav.get_screen(Menu)
         self.nav.display.display_image()
@@ -150,6 +149,12 @@ class InterfaceManager(GPIOInterface):
         elif gpio == SW_2:
             # Down arrow
             # TODO Implement
+            if self.position < len(self.nav.CURRENT_SCREEN.SELECTIONS) - 1:
+                self.position += 1
+
+            # Update menu selection
+            self.nav.update_menu_selection(self.position)
+            self.nav.display.display_image()
             print(f"SW2: {level}")
         elif gpio == SW_3:
             print(f"SW3: {level}")
@@ -170,6 +175,13 @@ class InterfaceManager(GPIOInterface):
         elif gpio == SW_4:
             # Up arrow
             # TODO Implement
+            # Lower bound for valid encoder position
+            if self.position >= 0:
+                self.position -= 1
+
+            # Update menu selection
+            self.nav.update_menu_selection(self.position)
+            self.nav.display.display_image()
             print(f"SW4: {level}")
         elif gpio == SW_5:
             print(f"SW5: {level}")
@@ -188,6 +200,7 @@ if __name__ == "__main__":
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        print("Exiting Program...")
+        print("Exiting Program...\n")
     finally:
-        del interface
+        interface.nav.display.clear_and_turn_off()
+        print("Successfully Exited.")

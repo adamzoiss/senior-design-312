@@ -53,8 +53,8 @@ class GPIOInterface:
         """
         Closes the GPIO chip handle.
         """
-        lgpio.gpiochip_close(self.handle)
         self._cancel_callbacks()
+        lgpio.gpiochip_close(self.handle)
 
     def _init_gpio(self):
         """
@@ -161,3 +161,11 @@ class GPIOInterface:
         self.sw3_cb.cancel()
         self.sw4_cb.cancel()
         self.sw5_cb.cancel()
+
+
+if __name__ == "__main__":
+    import time
+
+    gpio_interface = GPIOInterface()
+    while True:
+        time.sleep(1)

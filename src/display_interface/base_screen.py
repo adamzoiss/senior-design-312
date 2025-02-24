@@ -6,7 +6,7 @@ Description: This is the base class that will be inherited by
              different "Screen" classes.  
 """
 
-from display_interface.SSD1306_display import *
+from display_interface.SSD1306_display import SSD1306
 
 
 class Screen:
@@ -37,6 +37,9 @@ class Screen:
         self.SELECTIONS = {"NO_SELECTION": None}
 
         self.CURRENT_SELECTION: int = self.SELECTIONS["NO_SELECTION"]
+
+    def __del__(self):
+        del self.display
 
     def select(self, selection: str):
         """
@@ -82,3 +85,17 @@ class Screen:
                     Y_START + (15 * y_offset) + Y_H_OFFSET,
                     fill=1,
                 )
+
+
+if __name__ == "__main__":
+    # Initialize the display (assuming the SSD1306 class has an appropriate constructor)
+    display = SSD1306()
+
+    display.clear_screen()
+    display.draw_text("Hello, World!", x=0, y=0, font_size=12)
+    display.display_image()
+
+    import time
+
+    time.sleep(5)
+    del display

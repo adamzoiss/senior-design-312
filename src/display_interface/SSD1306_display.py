@@ -55,6 +55,19 @@ class SSD1306:
         self.image = Image.new("1", (self.width, self.height), color=0)
         self.draw = ImageDraw.Draw(self.image)
 
+    def __del__(self):
+        self.clear_and_turn_off()
+
+    def clear_and_turn_off(self):
+        """
+        Clears the display and turns it off.
+
+        This method clears the display by writing 0x00 to all GDDRAM and then
+        sends the command to turn off the display.
+        """
+        self.clear_screen()
+        self.write_command(0xAE)  # Display OFF
+
     def write_command(self, cmd):
         """
         Sends a command to the I2C device.
@@ -434,3 +447,8 @@ if __name__ == "__main__":
     display.clear_screen()
     display.draw_text("Hello, World!", x=0, y=0, font_size=12)
     display.display_image()
+
+    import time
+
+    time.sleep(5)
+    del display

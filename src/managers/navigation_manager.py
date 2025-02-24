@@ -34,10 +34,13 @@ class NavigationManager(Menu, Mode):
             The display object to draw on.
         """
         self.display = display
-        self.MENU = Menu(display)
-        self.MODE = Mode(display)
+        self.MENU = Menu(self.display)
+        self.MODE = Mode(self.display)
 
         self.CURRENT_SCREEN = self.MENU
+
+    def __del__(self):
+        del self.display
 
     def get_screen(self, screen: Screen):
         """
@@ -124,3 +127,7 @@ if __name__ == "__main__":
     navigation.display.display_image()
     # navigation.display.image.save("your_image.png")
     #####################################
+    import time
+
+    time.sleep(5)
+    del navigation
