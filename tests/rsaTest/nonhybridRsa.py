@@ -6,14 +6,14 @@ import base64
 import secrets
 import wave
 import time
-from pydub import AudioSegment
+# from pydub import AudioSegment
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 import numpy as np
-import scipy.io.wavfile as wavfile
+# import scipy.io.wavfile as wavfile
 import traceback
 import pyaudio
 

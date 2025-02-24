@@ -4,13 +4,13 @@ from cryptography.hazmat.backends import default_backend
 import os
 import wave
 import time
-from pydub import AudioSegment
+# from pydub import AudioSegment
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 import numpy as np
-import scipy.io.wavfile as wavfile
+# import scipy.io.wavfile as wavfile
 import traceback
 import pyaudio
 
@@ -44,7 +44,7 @@ def record_audio(duration=3, sample_rate=44100):
     
     CHUNK = 1024
     FORMAT = pyaudio.paInt16
-    CHANNELS = 2
+    CHANNELS = 1
     
     p = pyaudio.PyAudio()
     
