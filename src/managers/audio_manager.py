@@ -23,6 +23,11 @@ ENCRYPTED_AUDIO_FILE = PATH + "encrypted_audio.bin"
 ENCRYPTED_AUDIO_STREAM_FILE = PATH + "encrypted_audio_stream.wav"
 DECRYPTED_AUDIO_FILE = PATH + "decrypted_audio.wav"
 DECRYPTED_AUDIO_STREAM_FILE = PATH + "decrypted_audio_stream.wav"
+RSA_ENCRYPTED_AUDIO_FILE = PATH + "RSA_encrypted_audio.bin"
+RSA_ENCRYPTED_AUDIO_STREAM_FILE = PATH + "RSA_encrypted_audio_stream.wav"
+RSA_DECRYPTED_AUDIO_FILE = PATH + "RSA_decrypted_audio.wav"
+RSA_DECRYPTED_AUDIO_STREAM_FILE = PATH + "RSA_decrypted_audio_stream.wav"
+
 
 
 class AudioManager:
@@ -406,7 +411,7 @@ class AudioManager:
             print(f"An error occurred during decryption: {e}")
 
     ################# Adding RSA Stuff ########################
-    def encrypt_rsa_file(self, input_file=AUDIO_FILE, output_file=ENCRYPTED_AUDIO_FILE):
+    def encrypt_rsa_file(self, input_file=AUDIO_FILE, output_file=RSA_ENCRYPTED_AUDIO_FILE):
         """
         Encrypt an audio file using RSA and save the encrypted data to a new file.
 
@@ -445,6 +450,7 @@ class AudioManager:
                 audio_data = wf.readframes(wf.getnframes())
 
             # Encrypt the audio data
+            encryptor = CryptoManager()
             encrypted_data = self.encryptor.rsa_encrypt_file(audio_data, params)
 
             # Save encrypted data
@@ -456,7 +462,7 @@ class AudioManager:
         except Exception as e:
             print(f"An error occurred during encryption: {e}")
 
-    def decrypt_rsa_audio_file(self, input_file=ENCRYPTED_AUDIO_FILE, output_file=DECRYPTED_AUDIO_FILE):
+    def decrypt_rsa_audio_file(self, input_file=RSA_ENCRYPTED_AUDIO_FILE, output_file=RSA_DECRYPTED_AUDIO_FILE):
         """
         Decrypt an RSA encrypted audio file and save the decrypted audio to a new file.
 
@@ -487,6 +493,7 @@ class AudioManager:
                 encrypted_data = encrypted_file.read()
 
             # Decrypt the audio data
+            encryptor = CryptoManager()
             decrypted_data, audio_params = self.encryptor.rsa_decrypt_file(encrypted_data)
 
             if audio_params:
