@@ -27,7 +27,10 @@ RSA_ENCRYPTED_AUDIO_FILE = PATH + "RSA_encrypted_audio.bin"
 RSA_ENCRYPTED_AUDIO_STREAM_FILE = PATH + "RSA_encrypted_audio_stream.wav"
 RSA_DECRYPTED_AUDIO_FILE = PATH + "RSA_decrypted_audio.wav"
 RSA_DECRYPTED_AUDIO_STREAM_FILE = PATH + "RSA_decrypted_audio_stream.wav"
-
+HYBRID_ENCRYPTED_AUDIO_FILE = PATH + "HYBRID_encrypted_audio.bin"
+HYBRID_ENCRYPTED_AUDIO_STREAM_FILE = PATH + "HYBRID_encrypted_audio_stream.wav"
+HYBRID_DECRYPTED_AUDIO_FILE = PATH + "HYBRID_decrypted_audio.wav"
+HYBRID_DECRYPTED_AUDIO_STREAM_FILE = PATH + "HYBRID_decrypted_audio_stream.wav"
 
 
 class AudioManager:
@@ -510,6 +513,97 @@ class AudioManager:
 
         except Exception as e:
             print(f"An error occurred during decryption: {e}")
+    
+    ################## Hybrid AES and RSA Implementation #####################
+    def encrypt_hybrid_file(self, input_file=AUDIO_FILE, output_file=HYBRID_ENCRYPTED_AUDIO_FILE):
+        """
+        Encrypt an audio file using hybrid RSA-AES encryption.
+        """
+        parent_dir = get_proj_root()
+        output_dir = os.path.join(parent_dir, PATH)
+        output_file_path = os.path.join(output_dir, os.path.basename(output_file))
+        input_file_path = os.path.join(output_dir, os.path.basename(input_file))
+        noise_file = os.path.join(output_dir, "hybrid_encrypted_noise.wav")
+        
+        ensure_path(str(output_dir))
+
+        if not os.path.exists(input_file_path):
+            print(f"Error: Input file {input_file_path} does not exist.")
+            print("Please record an audio file first using option 2 (Record audio).")
+            return
+
+        try:
+            # Read the audio file
+            with wave.open(input_file_path, 'rb') as wf:
+                params = wf.getparams()._asdict()
+                audio_data = wf.readframes(wf.getnframes())
+
+            # Encrypt the audio data
+            encryptor = CryptoManager()
+            encrypted_data = self.encryptor.hybrid_encrypt_file(audio_data, params)
+            
+            if encrypted_data:
+                # Save encrypted data
+                with open(output_file_path, "wb") as f:
+                    f.write(encrypted_data)
+                print(f"Hybrid encrypted audio saved to {output_file}")
+                ################### Added to print out the encryption noise ##################
+                # Write encrypted noise to WAV file
+                key_len = int.from_bytes(encrypted_data[16:20], 'big')
+                encrypted_audio = encrypted_data[20+key_len:]
+                
+                with wave.open(noise_file, 'wb') as wf:
+                    wf.setnchannels(1)  # Mono
+                    wf.setsampwidth(2)  # 16-bit
+                    wf.setframerate(44100)  # 44.1kHz
+                    wf.writeframes(encrypted_audio)
+                print(f"Encrypted noise saved to {noise_file}")
+                #############################################################################
+            else:
+                print("Encryption failed")
+
+        except Exception as e:
+            print(f"An error occurred during encryption: {e}")
+
+    def decrypt_hybrid_audio_file(self, input_file=HYBRID_ENCRYPTED_AUDIO_FILE, output_file=HYBRID_DECRYPTED_AUDIO_FILE):
+        """
+        Decrypt a hybrid RSA-AES encrypted audio file.
+        """
+        parent_dir = get_proj_root()
+        output_dir = os.path.join(parent_dir, PATH)
+        output_file_path = os.path.join(output_dir, os.path.basename(output_file))
+        input_file_path = os.path.join(output_dir, os.path.basename(input_file))
+        
+        ensure_path(str(output_dir))
+
+        if not os.path.exists(input_file_path):
+            print(f"Error: {input_file_path} does not exist.")
+            return
+
+        try:
+            print(f"Decrypting {input_file}...")
+            
+            # Read the encrypted file
+            with open(input_file_path, "rb") as f:
+                encrypted_data = f.read()
+
+            # Decrypt the data
+            encryptor = CryptoManager()
+            decrypted_audio = self.encryptor.hybrid_decrypt_file(encrypted_data)
+
+            if decrypted_audio:
+                # Save the decrypted audio
+                with wave.open(output_file_path, "wb") as wf:
+                    wf.setnchannels(1)  # Mono
+                    wf.setsampwidth(2)  # 16-bit
+                    wf.setframerate(44100)  # 44.1kHz
+                    wf.writeframes(decrypted_audio)
+                print(f"Decrypted audio saved to {output_file}")
+            else:
+                print("Decryption failed")
+
+        except Exception as e:
+            print(f"An error occurred during decryption: {e}")
 
     def terminate(self):
         """
@@ -532,8 +626,10 @@ if __name__ == "__main__":
     print("7. Decrypt an audio stream")
     print("8. RSA encrypt audio file")
     print("9. RSA decrypt audio file")
+    print("10. Hybrid RSA-AES encrypt audio file")
+    print("11. Hybrid RSA-AES decrypt audio file")
 
-    choice = input("Choose an option (1/2/3/4/5/6/7/8/9): ").strip()
+    choice = input("Choose an option (1/2/3/4/5/6/7/8/9/10/11): ").strip()
 
     try:
         if choice == "1":
@@ -567,6 +663,10 @@ if __name__ == "__main__":
             handler.encrypt_rsa_file()
         elif choice == "9":
             handler.decrypt_rsa_audio_file()
+        elif choice == "10":
+            handler.encrypt_hybrid_file()
+        elif choice == "11":
+            handler.decrypt_hybrid_audio_file()
         else:
             print("Invalid choice.")
     finally:

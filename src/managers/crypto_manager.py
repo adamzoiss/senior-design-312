@@ -37,6 +37,7 @@ Other modes:
 
 import sys
 import numpy as np
+import os
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import serialization, hashes
@@ -275,6 +276,98 @@ class CryptoManager:
             print(f"RSA decryption error: {e}")
             return encrypted_data, None
 
+    ################### Hybrid AES and RSA Implementation ################
+    def hybrid_encrypt_file(self, audio_data, params):
+        """
+        Encrypt audio data using hybrid RSA-AES-CFB encryption.
+        
+        Parameters
+        ----------
+        audio_data : bytes
+            The audio data to encrypt
+        params : dict
+            Dictionary containing audio parameters
+            
+        Returns
+        -------
+        bytes
+            Encrypted audio data with all necessary components
+        """
+        try:
+            # Generate AES key and IV
+            aes_key = os.urandom(32)
+            iv = os.urandom(16)  # CFB uses 16 bytes IV
+            
+            # Encrypt AES key with RSA
+            encrypted_key = self.public_key.encrypt(
+                aes_key,
+                padding.OAEP(
+                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                    algorithm=hashes.SHA256(),
+                    label=None
+                )
+            )
+
+            # Encrypt audio data with AES-CFB
+            cipher = Cipher(algorithms.AES(aes_key), modes.CFB(iv))
+            encryptor = cipher.encryptor()
+            encrypted_audio = encryptor.update(audio_data) + encryptor.finalize()
+            
+            # Save all components
+            result = (
+                iv +  # 16 bytes for CFB
+                len(encrypted_key).to_bytes(4, 'big') +
+                encrypted_key +
+                encrypted_audio
+            )
+            
+            return result
+
+        except Exception as e:
+            print(f"Encryption error: {e}")
+            return None
+
+    def hybrid_decrypt_file(self, encrypted_data):
+        """
+        Decrypt hybrid RSA-AES-CFB encrypted audio data.
+        
+        Parameters
+        ----------
+        encrypted_data : bytes
+            The encrypted data to decrypt
+            
+        Returns
+        -------
+        bytes
+            Decrypted audio data
+        """
+        try:
+            # Read the components
+            iv = encrypted_data[:16]
+            key_len = int.from_bytes(encrypted_data[16:20], 'big')
+            encrypted_key = encrypted_data[20:20+key_len]
+            encrypted_audio = encrypted_data[20+key_len:]
+
+            # Decrypt the AES key
+            aes_key = self.private_key.decrypt(
+                encrypted_key,
+                padding.OAEP(
+                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                    algorithm=hashes.SHA256(),
+                    label=None
+                )
+            )
+
+            # Decrypt the audio data using AES-CFB
+            cipher = Cipher(algorithms.AES(aes_key), modes.CFB(iv))
+            decryptor = cipher.decryptor()
+            decrypted_audio = decryptor.update(encrypted_audio) + decryptor.finalize()
+
+            return decrypted_audio
+
+        except Exception as e:
+            print(f"Decryption error: {e}")
+        return None
 
 if __name__ == "__main__":
 
