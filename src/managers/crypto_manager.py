@@ -37,33 +37,33 @@ Other modes:
 
 import sys
 import numpy as np
-import os
+from pathlib import Path
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import serialization, hashes
-
-from src.utils.utils import *
-
+from src.utils.utils import get_proj_root
+from src.utils.key_creator import KeyCreator
 
 class CryptoManager:
     """
-    Handles AES encryption and decryption of audio streams using a key and IV from a file.
+    Handles encryption and decryption using three different methods:
+    1. AES-CFB for stream encryption
+    2. RSA for public key encryption
+    3. Hybrid RSA-AES for combining the benefits of both
 
     Attributes
     ----------
-    key : bytes
-        The AES key for encryption and decryption.
-    iv : bytes
-        The initialization vector (IV) for encryption and decryption.
-    cipher : Cipher
-        The AES cipher for encryption and decryption.
+    Various keys and IVs loaded from the key_creator utility
     """
 
     def __init__(
         self,
-        key_file="/keys/aes.txt",
-        public_key_file="/keys/public_key.pem",
-        private_key_file="/keys/private_key.pem",
+        aes_file="/keys/aes.txt",
+        rsa_public_file="/keys/rsa_public.pem",
+        rsa_private_file="/keys/rsa_private.pem",
+        hybrid_file="/keys/hybrid.txt",
+        hybrid_public_file="/keys/hybrid_public.pem",
+        hybrid_private_file="/keys/hybrid_private.pem"
     ):
         """
         Initialize the CryptoManager instance.
@@ -71,58 +71,69 @@ class CryptoManager:
         Parameters
         ----------
         key_file : str, optional
-            Path to the file containing the AES key and IV.
+            Path to the file containing the keys
         """
-        self.key_file = str(get_proj_root()) + key_file
-        self.private_key_file = str(get_proj_root()) + private_key_file
-        self.public_key_file = str(get_proj_root()) + public_key_file
+        root = get_proj_root()
+        self.aes_file = root / aes_file.lstrip("/")
+        self.rsa_public_file = root / rsa_public_file.lstrip("/")
+        self.rsa_private_file = root / rsa_private_file.lstrip("/")
+        self.hybrid_file = root / hybrid_file.lstrip("/")
+        self.hybrid_public_file = root / hybrid_public_file.lstrip("/")
+        self.hybrid_private_file = root / hybrid_private_file.lstrip("/")
 
-        self.key, self.iv = self._load_key_iv()
-        self.public_key, self.private_key = self._load_rsa_keys()
-        self.cipher = Cipher(algorithms.AES(self.key), modes.CFB(self.iv))
+        # Ensure keys exist
+        if not all(Path(f).exists() for f in [
+            self.aes_file, self.rsa_public_file, self.rsa_private_file,
+            self.hybrid_file, self.hybrid_public_file, self.hybrid_private_file
+        ]):
+            KeyCreator().create_all_keys()
 
-    def _load_key_iv(self):
-        """
-        Load the AES key and IV from a file.
+        # Load all keys
+        self._initialize_encryption_systems()
 
-        Returns
-        -------
-        tuple
-            A tuple containing the AES key (bytes) and IV (bytes).
-        """
+    def _initialize_encryption_systems(self):
+        """Initialize all encryption systems with their respective keys."""
         try:
-            with open(self.key_file, "r") as f:
-                key = bytes.fromhex(f.readline().strip())
-                iv = bytes.fromhex(f.readline().strip())
-                print("Key and IV loaded from file.")
-                return key, iv
-        except Exception as e:
-            print(f"Exception thrown: {e}\nExiting program...")
-            sys.exit()
+            # Load AES keys
+            with open(self.aes_file, "r") as f:
+                self.aes_key = bytes.fromhex(f.readline().strip())
+                self.aes_iv = bytes.fromhex(f.readline().strip())
+            self.aes_cipher = Cipher(algorithms.AES(self.aes_key), modes.CFB(self.aes_iv))
 
-    def _load_rsa_keys(self):
-        """
-        Load the RSA public and private keys from files.
+            # Load RSA keys
+            with open(self.rsa_public_file, "rb") as f:
+                self.rsa_public_key = serialization.load_pem_public_key(f.read())
+            with open(self.rsa_private_file, "rb") as f:
+                self.rsa_private_key = serialization.load_pem_private_key(f.read(), password=None)
 
-        Returns
-        -------
-        tuple
-            A tuple containing the RSA public key and private key.
-        """
-        try:
-            with open(self.public_key_file, "rb") as f:
-                public_key = serialization.load_pem_public_key(f.read())
-            with open(self.private_key_file, "rb") as f:
-                private_key = serialization.load_pem_private_key(
-                    f.read(), password=None
+            # Load Hybrid keys
+            with open(self.hybrid_public_file, "rb") as f:
+                self.hybrid_public_key = serialization.load_pem_public_key(f.read())
+            with open(self.hybrid_private_file, "rb") as f:
+                self.hybrid_private_key = serialization.load_pem_private_key(f.read(), password=None)
+            
+            # Load and decrypt hybrid AES key
+            with open(self.hybrid_file, "rb") as f:
+                encrypted_hybrid_keys = f.read()
+            decrypted_hybrid_keys = self.hybrid_private_key.decrypt(
+                encrypted_hybrid_keys,
+                padding.OAEP(
+                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                    algorithm=hashes.SHA256(),
+                    label=None
                 )
-            print("RSA keys loaded from files.")
-            return public_key, private_key
+            )
+            self.hybrid_aes_key = decrypted_hybrid_keys[:32]
+            self.hybrid_iv = decrypted_hybrid_keys[32:]
+            
+            print("All encryption systems initialized successfully.")
         except Exception as e:
-            print(f"Exception thrown: {e}\nExiting program...")
-            sys.exit()
+            print(f"Error initializing encryption systems: {e}")
+            sys.exit(1)
 
-    def encrypt(self, data):
+    ############### AES-CFB Methods ###############
+    
+    def aes_encrypt(self, data):
         """
         Encrypt the given audio data.
 
@@ -136,68 +147,40 @@ class CryptoManager:
         bytes
             Encrypted audio data.
         """
-        encryptor = self.cipher.encryptor()
+        encryptor = self.aes_cipher.encryptor()
         return encryptor.update(data) + encryptor.finalize()
 
-    def decrypt(self, data):
+    def aes_decrypt(self, data):
         """
-        Decrypt the given encrypted audio data.
+        Encrypt the given audio data.
 
         Parameters
         ----------
         data : bytes
-            The encrypted audio data to decrypt.
+            The audio data to encrypt.
 
         Returns
         -------
         bytes
-            Decrypted audio data.
+            Encrypted audio data.
         """
-        decryptor = self.cipher.decryptor()
+        decryptor = self.aes_cipher.decryptor()
         return decryptor.update(data) + decryptor.finalize()
-    
 
-    ################## Adding stuff for RSA ######################
-    def rsa_encrypt_file(self, audio_data, params):
+    ############### RSA Methods ###############
+
+    def rsa_encrypt(self, data):
         """
-        Encrypt audio file data using RSA.
-
-        Parameters
-        ----------
-        audio_data : bytes
-            The audio data to encrypt
-        params : dict
-            Dictionary containing audio parameters (channels, sampwidth, framerate)
-
-        Returns
-        -------
-        bytes
-            Encrypted audio data with header information
+        Encrypt data using RSA. Handles data chunking for large files.
         """
         try:
-            # Convert to numpy array for better handling
-            audio_array = np.frombuffer(audio_data, dtype=np.int16)
-            audio_bytes = audio_array.tobytes()
-            
-            # Create header with audio parameters
-            header = f"{params['channels']},{params['sampwidth']},{params['framerate']},{len(audio_array)}".encode()
-            header_len = len(header).to_bytes(4, 'big')
-
-            # Combine header and audio data
-            data_to_encrypt = header_len + header + audio_bytes
-
-            # Split into chunks and encrypt
-            chunk_size = 444  # 446 - 2 bytes for length prefix
-            chunks = [data_to_encrypt[i:i + chunk_size] 
-                    for i in range(0, len(data_to_encrypt), chunk_size)]
+            chunk_size = 446  # Maximum size for RSA-4096 with OAEP padding
+            chunks = [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
             
             encrypted_chunks = []
             for chunk in chunks:
-                chunk_length = len(chunk).to_bytes(2, 'big')
-                chunk_with_length = chunk_length + chunk
-                
-                encrypted_chunk = self.public_key.encrypt(
-                    chunk_with_length,
+                encrypted_chunk = self.rsa_public_key.encrypt(
+                    chunk,
                     padding.OAEP(
                         mgf=padding.MGF1(algorithm=hashes.SHA256()),
                         algorithm=hashes.SHA256(),
@@ -207,34 +190,22 @@ class CryptoManager:
                 encrypted_chunks.append(encrypted_chunk)
 
             return b''.join(encrypted_chunks)
-
         except Exception as e:
             print(f"RSA encryption error: {e}")
-            return audio_data
+            return None
 
-    def rsa_decrypt_file(self, encrypted_data):
+    def rsa_decrypt(self, encrypted_data):
         """
-        Decrypt RSA encrypted audio file data.
-
-        Parameters
-        ----------
-        encrypted_data : bytes
-            The encrypted audio data to decrypt.
-
-        Returns
-        -------
-        tuple
-            (decrypted_data, audio_params) where audio_params contains channels, sampwidth, framerate
+        Decrypt RSA encrypted data. Handles chunked data.
         """
         try:
-            # Split into chunks and decrypt
             chunk_size = 512  # RSA-4096 encrypted chunk size
-            encrypted_chunks = [encrypted_data[i:i + chunk_size] 
-                            for i in range(0, len(encrypted_data), chunk_size)]
+            chunks = [encrypted_data[i:i + chunk_size] 
+                     for i in range(0, len(encrypted_data), chunk_size)]
             
             decrypted_chunks = []
-            for chunk in encrypted_chunks:
-                decrypted_chunk = self.private_key.decrypt(
+            for chunk in chunks:
+                decrypted_chunk = self.rsa_private_key.decrypt(
                     chunk,
                     padding.OAEP(
                         mgf=padding.MGF1(algorithm=hashes.SHA256()),
@@ -242,134 +213,47 @@ class CryptoManager:
                         label=None
                     )
                 )
-                
-                chunk_length = int.from_bytes(decrypted_chunk[:2], 'big')
-                actual_data = decrypted_chunk[2:2+chunk_length]
-                decrypted_chunks.append(actual_data)
+                decrypted_chunks.append(decrypted_chunk)
 
-            # Combine all decrypted chunks
-            decrypted_data = b''.join(decrypted_chunks)
-
-            # Extract header
-            header_len = int.from_bytes(decrypted_data[:4], 'big')
-            header = decrypted_data[4:4+header_len].decode().split(',')
-            channels, sampwidth, framerate, nsamples = map(int, header)
-
-            # Extract audio data
-            audio_bytes = decrypted_data[4+header_len:]
-
-            # Convert to numpy array
-            audio_array = np.frombuffer(audio_bytes, dtype=np.int16)
-            
-            # Ensure correct number of samples
-            audio_array = audio_array[:nsamples]
-            
-            audio_params = {
-                'channels': channels,
-                'sampwidth': sampwidth,
-                'framerate': framerate
-            }
-            
-            return audio_array.tobytes(), audio_params
-
+            return b''.join(decrypted_chunks)
         except Exception as e:
             print(f"RSA decryption error: {e}")
-            return encrypted_data, None
-
-    ################### Hybrid AES and RSA Implementation ################
-    def hybrid_encrypt_file(self, audio_data, params):
-        """
-        Encrypt audio data using hybrid RSA-AES-CFB encryption.
-        
-        Parameters
-        ----------
-        audio_data : bytes
-            The audio data to encrypt
-        params : dict
-            Dictionary containing audio parameters
-            
-        Returns
-        -------
-        bytes
-            Encrypted audio data with all necessary components
-        """
-        try:
-            # Generate AES key and IV
-            aes_key = os.urandom(32)
-            iv = os.urandom(16)  # CFB uses 16 bytes IV
-            
-            # Encrypt AES key with RSA
-            encrypted_key = self.public_key.encrypt(
-                aes_key,
-                padding.OAEP(
-                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                    algorithm=hashes.SHA256(),
-                    label=None
-                )
-            )
-
-            # Encrypt audio data with AES-CFB
-            cipher = Cipher(algorithms.AES(aes_key), modes.CFB(iv))
-            encryptor = cipher.encryptor()
-            encrypted_audio = encryptor.update(audio_data) + encryptor.finalize()
-            
-            # Save all components
-            result = (
-                iv +  # 16 bytes for CFB
-                len(encrypted_key).to_bytes(4, 'big') +
-                encrypted_key +
-                encrypted_audio
-            )
-            
-            return result
-
-        except Exception as e:
-            print(f"Encryption error: {e}")
             return None
 
-    def hybrid_decrypt_file(self, encrypted_data):
+    ############### Hybrid Methods ###############
+
+    def hybrid_encrypt(self, data):
         """
-        Decrypt hybrid RSA-AES-CFB encrypted audio data.
-        
-        Parameters
-        ----------
-        encrypted_data : bytes
-            The encrypted data to decrypt
-            
-        Returns
-        -------
-        bytes
-            Decrypted audio data
+        Encrypt data using hybrid encryption (RSA + AES).
         """
         try:
-            # Read the components
-            iv = encrypted_data[:16]
-            key_len = int.from_bytes(encrypted_data[16:20], 'big')
-            encrypted_key = encrypted_data[20:20+key_len]
-            encrypted_audio = encrypted_data[20+key_len:]
-
-            # Decrypt the AES key
-            aes_key = self.private_key.decrypt(
-                encrypted_key,
-                padding.OAEP(
-                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                    algorithm=hashes.SHA256(),
-                    label=None
-                )
-            )
-
-            # Decrypt the audio data using AES-CFB
-            cipher = Cipher(algorithms.AES(aes_key), modes.CFB(iv))
-            decryptor = cipher.decryptor()
-            decrypted_audio = decryptor.update(encrypted_audio) + decryptor.finalize()
-
-            return decrypted_audio
-
+            # Use pre-generated hybrid AES key to encrypt the data
+            cipher = Cipher(algorithms.AES(self.hybrid_aes_key), modes.CFB(self.hybrid_iv))
+            encryptor = cipher.encryptor()
+            encrypted_data = encryptor.update(data) + encryptor.finalize()
+            
+            return encrypted_data
         except Exception as e:
-            print(f"Decryption error: {e}")
-        return None
+            print(f"Hybrid encryption error: {e}")
+            return None
+
+    def hybrid_decrypt(self, encrypted_data):
+        """
+        Decrypt data using hybrid encryption (RSA + AES).
+        """
+        try:
+            # Use pre-generated hybrid AES key to decrypt the data
+            cipher = Cipher(algorithms.AES(self.hybrid_aes_key), modes.CFB(self.hybrid_iv))
+            decryptor = cipher.decryptor()
+            decrypted_data = decryptor.update(encrypted_data) + decryptor.finalize()
+            
+            return decrypted_data
+        except Exception as e:
+            print(f"Hybrid decryption error: {e}")
+            return None
 
 if __name__ == "__main__":
-
+    # Example usage
     print("Crypto Manager Program...")
     crypto = CryptoManager()
+    
