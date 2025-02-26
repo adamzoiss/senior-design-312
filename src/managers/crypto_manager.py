@@ -59,8 +59,8 @@ class CryptoManager:
     def __init__(
         self,
         aes_file="/keys/aes.txt",
-        rsa_public_file="/keys/rsa_public.pem",
-        rsa_private_file="/keys/rsa_private.pem",
+        rsa_public_file="/keys/public_key.pem",
+        rsa_private_file="/keys/private_key.pem",
         hybrid_file="/keys/hybrid.txt",
         hybrid_public_file="/keys/hybrid_public.pem",
         hybrid_private_file="/keys/hybrid_private.pem"
@@ -81,12 +81,14 @@ class CryptoManager:
         self.hybrid_public_file = root / hybrid_public_file.lstrip("/")
         self.hybrid_private_file = root / hybrid_private_file.lstrip("/")
 
-        # Ensure keys exist
-        if not all(Path(f).exists() for f in [
-            self.aes_file, self.rsa_public_file, self.rsa_private_file,
-            self.hybrid_file, self.hybrid_public_file, self.hybrid_private_file
-        ]):
-            KeyCreator().create_all_keys()
+        # Create hybrid keys if they don't exist
+        creator = KeyCreator()
+        try:
+            creator.verify_base_keys_exist()
+            creator.create_hybrid_keys()
+        except Exception as e:
+            print(f"Error with key creation: {e}")
+            sys.exit(1)
 
         # Load all keys
         self._initialize_encryption_systems()
