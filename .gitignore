@@ -6,5 +6,10 @@ __pycache__
 
 audio_files
 
+
+hybrid_private.pem
+hybrid_public.pem
+hybrid.txt
+
 *.bin
 *.wav
