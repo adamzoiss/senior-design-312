@@ -6,11 +6,11 @@ Description: This will handle the interface with the rpi. GPIO pins will be set 
     and the interface will be handled through this class.
 """
 
-import lgpio
 import time
 from src.managers.navigation_manager import *
 from src.gpio_interface.gpio_interface import *
 from src.managers.audio_manager import *
+from src.logging.logging_config import *
 
 
 class InterfaceManager(GPIOInterface):
@@ -58,23 +58,38 @@ class InterfaceManager(GPIOInterface):
         # Call base class constructor
         super().__init__(chip_number)
         #################################################
+        # Set up logging
+        self.logger: logging = setup_logger("InterfaceManager", overwrite=True)
+        ##################################################
+        # Variable for volume
+        self.volume = 50
         # Position variable for menu navigation
         self.position = -1
         # Last state values for the encoders
         self.last_state_a = 0
         self.last_state_b = 0
-        #################################################
-        # Display set up
-        display = SSD1306()
-        self.nav = NavigationManager(display)
-        self.nav.display.clear_screen()
-        self.nav.get_screen(Menu)
-        self.nav.display.display_image()
         ##################################################
         # Integrate audio
-        self.audio_man = AudioManager()
+        try:
+            self.audio_man = AudioManager()
+        except Exception as e:
+            self.logger.critical(
+                f"Exception when initialing audio manager: {e}"
+            )
+        #################################################
+        # Display set up
+        try:
+            self.display = SSD1306()
+            self.nav = NavigationManager(self.display)
+            self.nav.display.clear_screen()
+            self.nav.get_screen(Menu)
+            self.nav.CURRENT_SCREEN.update_volume(self.volume)
+            self.nav.display.display_image()
+        except Exception as e:
+            self.logger.critical(f"Exception when initialing display: {e}")
         ##################################################
-        print("Program Started")
+        # State that the manager initialized
+        self.logger.info("InterfaceManager initialized")
 
     def __del__(self):
         """
@@ -101,21 +116,45 @@ class InterfaceManager(GPIOInterface):
         if gpio == ENC_A:
             # Check for if the encoder has been moved counter-clockwise
             if self.last_state_a != level:
-                # Lower bound for valid encoder position
-                if self.position >= 0:
-                    self.position -= 1
+                ##############################################################
+                # Lower the volume
+                if self.volume > 0:
+                    self.volume -= 5
+
+                ##############################################################
+                # # Lower bound for valid encoder position
+                # if self.position >= 0:
+                #     self.position -= 1
+                ##############################################################
         elif gpio == ENC_B:
             # Check for if the encoder has been moved clockwise
             if self.last_state_b != level:
-                # Upper bound for valid encoder position
-                if self.position < len(self.nav.CURRENT_SCREEN.SELECTIONS) - 1:
-                    self.position += 1
+                ##############################################################
+                # Raise the volume
+                if self.volume < 100:
+                    self.volume += 5
+                ##############################################################
+                # # Upper bound for valid encoder position
+                # if self.position < len(self.nav.CURRENT_SCREEN.SELECTIONS) - 1:
+                #     self.position += 1
+                ##############################################################
+
+        self.logger.debug(
+            "".join(
+                [
+                    f"Chip{chip} | GPIO{gpio} | level: {level}\n",
+                    f"Position: {self.position}",
+                ]
+            )
+        )
 
         # Update last states for the encoders
         self.last_state_a = level
         self.last_state_b = level
         # Update menu selection
         self.nav.update_menu_selection(self.position)
+        self.nav.CURRENT_SCREEN.update_volume(self.volume)
+        self.audio_man.volume = self.volume
         self.nav.display.display_image()
 
     def _switch_callback(self, chip, gpio, level, timestamp):
@@ -134,52 +173,76 @@ class InterfaceManager(GPIOInterface):
             The timestamp of the event.
         """
         if gpio == SW_1:
-            print(f"SW1: {level}")
-            print(self.nav.CURRENT_SCREEN.CURRENT_SELECTION)
             try:
                 if self.position == self.nav.CURRENT_SCREEN.SELECTIONS["MODE"]:
                     self.nav.display.clear_screen()
                     self.nav.get_screen(Mode)
+                    self.nav.CURRENT_SCREEN.update_volume(self.volume)
                     self.nav.display.display_image()
-                    print("Mode Menu")
+                    # print("Mode Menu")
                     self.position = -1
                 elif True:  # TODO ADD MORE FUNCTIONALITY
                     pass
             except KeyError:
                 pass
+
         elif gpio == SW_2:
             # Down arrow
             # TODO Implement
-            print(f"SW2: {level}")
+            if self.position < len(self.nav.CURRENT_SCREEN.SELECTIONS) - 1:
+                self.position += 1
+
+            # Update menu selection
+            self.nav.update_menu_selection(self.position)
+            self.nav.CURRENT_SCREEN.update_volume(self.volume)
+            self.nav.display.display_image()
+
         elif gpio == SW_3:
-            print(f"SW3: {level}")
             # Checks if switch is pressed, and if so monitors audio
             # TODO Have tx rx implementation
-            match level:
-                case 0:
-                    if (
-                        self.audio_man.thread is None
-                        or not self.audio_man.thread.is_alive()
-                    ):
-                        self.audio_man.start_thread()
-                case 1:
-                    self.audio_man.stop_thread()
-                case _:
-                    print("Error GPIO level is not 0 or 1")
+            try:
+                match level:
+                    case 0:
+                        if (
+                            self.audio_man.thread is None
+                            or not self.audio_man.thread.is_alive()
+                        ):
+                            self.audio_man.start_thread()
+                    case 1:
+                        self.audio_man.stop_thread()
+                    case _:
+                        print("Error GPIO level is not 0 or 1")
+            except Exception as e:
+                print(f"Error with exception: {e}")
 
         elif gpio == SW_4:
             # Up arrow
-            # TODO Implement
-            print(f"SW4: {level}")
+            # Lower bound for valid encoder position
+            if self.position >= 0:
+                self.position -= 1
+
+            # Update menu selection
+            self.nav.update_menu_selection(self.position)
+            self.nav.CURRENT_SCREEN.update_volume(self.volume)
+            self.nav.display.display_image()
+
         elif gpio == SW_5:
-            print(f"SW5: {level}")
             # Checks if the return arrow option is pressed and returns to menu
             if type(self.nav.CURRENT_SCREEN) != Menu:
                 self.nav.display.clear_screen()
                 self.nav.get_screen(Menu)
+                self.nav.CURRENT_SCREEN.update_volume(self.volume)
                 self.nav.display.display_image()
                 self.position = -1
-        print("-" * 20)
+
+        self.logger.debug(
+            "".join(
+                [
+                    f"Chip{chip} | GPIO{gpio} ",
+                    f"| level: {level} | Position: {self.position}",
+                ]
+            )
+        )
 
 
 if __name__ == "__main__":
@@ -188,6 +251,7 @@ if __name__ == "__main__":
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        print("Exiting Program...")
+        print("Exiting Program...\n")
     finally:
-        del interface
+        interface.nav.display.clear_and_turn_off()
+        print("Successfully Exited.")

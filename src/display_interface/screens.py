@@ -6,7 +6,6 @@ Description: This file holds various "Screens" to be used on
              the display.
 """
 
-from typing import dict, any
 from display_interface.base_screen import *
 
 
@@ -20,7 +19,7 @@ class Menu(Screen):
         A dictionary of selectable options.
     """
 
-    def __init__(self: int, display: SSD1306) -> list:
+    def __init__(self, display: SSD1306):
         """
         Initializes the Menu with the specified display.
 
@@ -44,7 +43,7 @@ class Mode(Screen):
         A dictionary of selectable options.
     """
 
-    def __init__(self: int, display: SSD1306) -> list:
+    def __init__(self, display: SSD1306):
         """
         Initializes the Mode with the specified display.
 

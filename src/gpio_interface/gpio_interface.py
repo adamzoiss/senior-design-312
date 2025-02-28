@@ -53,8 +53,8 @@ class GPIOInterface:
         """
         Closes the GPIO chip handle.
         """
-        lgpio.gpiochip_close(self.handle)
         self._cancel_callbacks()
+        lgpio.gpiochip_close(self.handle)
 
     def _init_gpio(self):
         """
@@ -73,8 +73,8 @@ class GPIOInterface:
         lgpio.gpio_claim_input(self.handle, SW_4, lgpio.SET_PULL_UP)
         lgpio.gpio_claim_input(self.handle, SW_5, lgpio.SET_PULL_UP)
         # Setting debounce for encoders
-        lgpio.gpio_set_debounce_micros(self.handle, ENC_A, DEBOUNCE_MICRO)
-        lgpio.gpio_set_debounce_micros(self.handle, ENC_B, DEBOUNCE_MICRO)
+        lgpio.gpio_set_debounce_micros(self.handle, ENC_A, 50)
+        lgpio.gpio_set_debounce_micros(self.handle, ENC_B, 50)
         # Setting debounce for push buttons
         lgpio.gpio_set_debounce_micros(self.handle, SW_1, DEBOUNCE_MICRO)
         lgpio.gpio_set_debounce_micros(self.handle, SW_2, DEBOUNCE_MICRO)
@@ -161,3 +161,11 @@ class GPIOInterface:
         self.sw3_cb.cancel()
         self.sw4_cb.cancel()
         self.sw5_cb.cancel()
+
+
+if __name__ == "__main__":
+    import time
+
+    gpio_interface = GPIOInterface()
+    while True:
+        time.sleep(1)

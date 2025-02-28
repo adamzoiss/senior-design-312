@@ -16,6 +16,7 @@ import threading
 
 from src.managers.crypto_manager import CryptoManager
 from src.utils.utils import *
+from src.logging.logging_config import *
 
 # Path and file names for the file types.
 PATH = "./audio_files/"
@@ -63,14 +64,17 @@ class AudioManager:
         """
         Initialize the AudioManager instance and configure default audio settings.
         """
+        # Set up logging
+        self.logger: logging = setup_logger("AudioManager")
+
         self.CHUNK = 32  # Affects latency for monitoring
         self.FORMAT = pyaudio.paInt16
         self.CHANNELS = 1
         self.RATE = 44100
 
         self.audio = pyaudio.PyAudio()
-        self.input_device_index = 0  # THIS VALUE CAN CHANGE
-        self.output_device_index = 0  # THIS VALUE CAN CHANGE
+        self.input_device_index = 3  # THIS VALUE CAN CHANGE
+        self.output_device_index = 2  # THIS VALUE CAN CHANGE
 
         self.input_stream = None
         self.output_stream = None
@@ -78,8 +82,11 @@ class AudioManager:
         # Initialize the encryptor
         self.encryptor = CryptoManager()
 
+        self.volume = 50  # Volume in %
         self.TX_EVENT = threading.Event()
         self.thread = None
+
+        self.logger.info("AudioManager initialized.")
 
     def start_thread(self):
         """
@@ -87,7 +94,7 @@ class AudioManager:
 
         This method starts a new thread that runs the `monitor_audio` method.
         """
-        print("Starting thread")
+        self.logger.debug("Starting thread")
         self.TX_EVENT.clear()  # Reset the tx event
         self.thread = threading.Thread(target=self.monitor_audio, daemon=True)
         self.thread.start()
@@ -98,11 +105,11 @@ class AudioManager:
 
         This method sets the event to stop the thread and waits for it to finish.
         """
-        print("Stopping thread")
+        self.logger.debug("Stopping thread")
         self.TX_EVENT.set()
         if self.thread:
             self.thread.join()
-            print("Thread stopped")
+            self.logger.debug("Thread stopped")
 
     def find_devices(self):
         """
@@ -127,7 +134,9 @@ class AudioManager:
                 frames_per_buffer=self.CHUNK,
             )
         except Exception as e:
-            print(f"Encountered exception with input stream: {e}")
+            self.logger.warning(
+                f"Encountered exception with input stream: {e}"
+            )
         # Configure and open the output stream
         try:
             self.output_stream = self.audio.open(
@@ -139,7 +148,9 @@ class AudioManager:
                 frames_per_buffer=self.CHUNK,
             )
         except Exception as e:
-            print(f"Encountered exception with output stream: {e}")
+            self.logger.warning(
+                f"Encountered exception with output stream: {e}"
+            )
 
     def _close_streams(self):
         """
@@ -165,20 +176,40 @@ class AudioManager:
         KeyboardInterrupt
             Stops monitoring when Ctrl+C is pressed.
         """
-        print("Monitoring audio... Press Ctrl+C to stop.")
-        self._open_streams()
+        self.logger.info(f"Monitoring audio | {self.volume}%")
+
         try:
+            # Open the streams
+            if self.audio.get_device_count() == 0:
+                # raise MemoryError("Can not open streams if no audio device.")
+                self.logger.warning("Can not open streams if no audio device.")
+                return
+            else:
+                self._open_streams()
+
+            # Monitor the audio
             while not self.TX_EVENT.is_set():
                 data = self.input_stream.read(
                     self.CHUNK, exception_on_overflow=False
                 )
+
+                # Convert to NumPy array
+                audio_data = np.frombuffer(data, dtype=np.int16)
+                # Apply volume scaling
+                audio_data = (audio_data * ((self.volume / 100))).astype(
+                    np.int16
+                )
+                # Convert back to bytes
+                data = audio_data.tobytes()
+
                 encrypted_data = self.encryptor.encrypt(data)
                 decrypted_data = self.encryptor.decrypt(encrypted_data)
                 self.output_stream.write(decrypted_data)
         except KeyboardInterrupt:
-            print("\nMonitoring stopped.")
+            self.logger.info("\nMonitoring stopped.\n")
         finally:
             self._close_streams()
+            # self.logger.info("Monitoring stopped.")
 
     def record_audio(self, output_file=AUDIO_FILE, monitoring=False):
         """

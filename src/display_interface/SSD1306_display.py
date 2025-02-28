@@ -7,9 +7,9 @@ Description: Interfaces with the SSD1306 OLED display.
 
 import fcntl
 import os
-from typing import int, str
 from PIL import Image, ImageDraw, ImageFont
 from src.utils.interface_constants import *
+import struct
 
 
 class SSD1306:
@@ -32,7 +32,7 @@ class SSD1306:
         The drawing object to draw on the image.
     """
 
-    def __init__(self: int, i2c_bus: int=1, width: int=128, height: int=64) -> int:
+    def __init__(self, i2c_bus: int = 1, width: int = 128, height: int = 64):
         """
         Initializes the SSD1306 display with the given I2C bus, width, and height.
 
@@ -56,7 +56,20 @@ class SSD1306:
         self.image = Image.new("1", (self.width, self.height), color=0)
         self.draw = ImageDraw.Draw(self.image)
 
-    def write_command(self: int, cmd: int) -> int:
+    def __del__(self):
+        self.clear_and_turn_off()
+
+    def clear_and_turn_off(self):
+        """
+        Clears the display and turns it off.
+
+        This method clears the display by writing 0x00 to all GDDRAM and then
+        sends the command to turn off the display.
+        """
+        self.clear_screen()
+        self.write_command(0xAE)  # Display OFF
+
+    def write_command(self, cmd):
         """
         Sends a command to the I2C device.
 
@@ -73,7 +86,7 @@ class SSD1306:
 
         os.write(self.i2c_dev, bytes([0x00, cmd]))
 
-    def write_data(self: int, data: int) -> int:
+    def write_data(self, data: int):
         """
         Writes data to the I2C device.
 
@@ -90,7 +103,7 @@ class SSD1306:
 
         os.write(self.i2c_dev, bytes([0x40]) + data)
 
-    def initialize_display(self: int) -> int:
+    def initialize_display(self):
         """
         Initializes the display with a series of commands.
 
@@ -104,37 +117,35 @@ class SSD1306:
         """
         init_cmds = [
             0xAE,  # Display OFF
-            0x20,
-            0x00,  # Memory Addressing Mode: Horizontal
-            0x21,
-            0x00,
-            0x7F,  # Set Column Address 0-127
-            0x22,
-            0x00,
-            0x07,  # Set Page Address 0-7
+            0xD5,
+            0x80,  # Set display clock divide ratio/oscillator frequency
             0xA8,
-            0x3F,  # Multiplex Ratio: 63
+            0x3F,  # Multiplex ratio (64)
             0xD3,
-            0x00,  # Display Offset: 0
-            0x40,  # Start Line: 0
-            0xA1,  # Segment Re-map
-            0xC8,  # COM Output Scan Direction
+            0x00,  # Display offset
+            0x40,  # Start line (0)
+            0x8D,
+            0x14,  # Enable charge pump
+            0x20,
+            0x00,  # Set memory addressing mode to Horizontal
+            0xA1,  # Segment re-map (mirror horizontally)
+            0xC8,  # COM output scan direction (mirror vertically)
             0xDA,
-            0x12,  # COM Pins Hardware Config
+            0x12,  # Set COM pins hardware configuration
             0x81,
-            0x7F,  # Contrast Control
+            0xCF,  # Set contrast control
             0xD9,
-            0xF1,  # Pre-charge Period
+            0xF1,  # Set pre-charge period
             0xDB,
-            0x40,  # VCOMH Deselect Level
-            0xA4,  # Entire Display ON
-            0xA6,  # Normal Display Mode
+            0x40,  # Set VCOMH deselect level
+            0xA4,  # Output follows RAM content
+            0xA6,  # Normal display mode
             0xAF,  # Display ON
         ]
         for cmd in init_cmds:
             self.write_command(cmd)
 
-    def clear_screen(self: int) -> int:
+    def clear_screen(self):
         """
         Clears the display by writing 0x00 to all GDDRAM and resets the image.
 
@@ -161,7 +172,7 @@ class SSD1306:
         # for _ in range(self.pages):
         #     self.write_data(bytes([0x00] * self.width))
 
-    def display_image(self: int) -> int:
+    def display_image(self):
         """
         Displays the image stored in the `self.image` attribute on the screen.
 
@@ -218,7 +229,7 @@ class SSD1306:
             self.write_command(0x10)  # Upper Column Start Address
             self.write_data(bytes(buffer[page * 128 : (page + 1) * 128]))
 
-    def clear_rectangle(self: int, x1: int, y1: int, x2: int, y2: int) -> int:
+    def clear_rectangle(self, x1: int, y1: int, x2: int, y2: int):
         """
         Clears a rectangular area on the display by setting the specified rectangle's pixels to 0 (off).
 
@@ -243,8 +254,12 @@ class SSD1306:
         self.draw.rectangle((x1, y1, x2, y2), fill=0)
 
     def start_scroll_vertical_right(
-        self: int, start_page: int=0, end_page: int=7, speed: int=2, vertical_offset: int=1
-    ) -> int:
+        self,
+        start_page: int = 0,
+        end_page: int = 7,
+        speed: int = 2,
+        vertical_offset: int = 1,
+    ):
         """
         Initiates a vertical and right scroll on the display.
 
@@ -268,8 +283,12 @@ class SSD1306:
         self.write_command(0x2F)  # Start scrolling
 
     def start_scroll_vertical_left(
-        self: int, start_page: int=0, end_page: int=7, speed: int=2, vertical_offset: int=1
-    ) -> int:
+        self,
+        start_page: int = 0,
+        end_page: int = 7,
+        speed: int = 2,
+        vertical_offset: int = 1,
+    ):
         """
         Initiates a vertical and left scroll on the display.
 
@@ -292,7 +311,7 @@ class SSD1306:
         self.write_command(vertical_offset)  # Vertical scroll offset
         self.write_command(0x2F)  # Start scrolling
 
-    def stop_scroll(self: int) -> int:
+    def stop_scroll(self):
         """
         Stops the scrolling on the display.
 
@@ -303,8 +322,13 @@ class SSD1306:
         self.write_command(0x2E)  # Stop scrolling
 
     def draw_text(
-        self: int, text: str, x: int=0, y: int=0, font_size: int=12, font_file: int="assets/arial.ttf"
-    ) -> list:
+        self,
+        text: str,
+        x: int = 0,
+        y: int = 0,
+        font_size: int = 12,
+        font_file: int = "assets/arial.ttf",
+    ):
         """
         Draws text on the image at the specified coordinates with the given font size.
 
@@ -333,7 +357,7 @@ class SSD1306:
             font = ImageFont.load_default()
         self.draw.text((x, y), text, font=font, fill=1)
 
-    def draw_line(self: int, x1: int, y1: int, x2: int, y2: int, fill: int=1) -> int:
+    def draw_line(self, x1: int, y1: int, x2: int, y2: int, fill: int = 1):
         """
         Draws a line on the display.
 
@@ -352,7 +376,9 @@ class SSD1306:
         """
         self.draw.line([x1, y1, x2, y2], fill=fill)
 
-    def draw_circle(self: int, x: int, y: int, radius: int, outline: int=1, fill: int=0) -> int:
+    def draw_circle(
+        self, x: int, y: int, radius: int, outline: int = 1, fill: int = 0
+    ):
         """
         Draws a circle on the display.
 
@@ -376,14 +402,14 @@ class SSD1306:
         )
 
     def draw_rotated_text(
-        self: int,
+        self,
         text: str,
-        x: int=0,
-        y: int=0,
-        angle: int=0,
-        font_size: int=12,
-        font_file: int="assets/arial.ttf",
-    ) -> list:
+        x: int = 0,
+        y: int = 0,
+        angle: int = 0,
+        font_size: int = 12,
+        font_file: int = "assets/arial.ttf",
+    ):
         """
         Draws rotated text on the display at the specified coordinates.
 
@@ -435,3 +461,18 @@ if __name__ == "__main__":
     display.clear_screen()
     display.draw_text("Hello, World!", x=0, y=0, font_size=12)
     display.display_image()
+
+    import time
+
+    display.clear_screen()
+    start_time = time.time()
+    display.draw_text("Hello, World!", x=0, y=0, font_size=12)
+    display.display_image()
+    end_time = time.time()
+    time_taken = (end_time - start_time) * 1_000_000  # Convert to microseconds
+    print(f"Time taken to display image: {time_taken:.2f} microseconds")
+
+    import time
+
+    time.sleep(5)
+    del display

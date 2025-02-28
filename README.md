@@ -15,15 +15,17 @@ __Files & Notes:__ [SharePoint](https://fsu-my.sharepoint.com/personal/amw21i_fs
 
 3. [Running the Code](#running-the-code)
 
-4. [Documenting Python Code](#documenting-python-code)
+4. [Creating a daemon](#creating-a-daemon)
+
+5. [Documenting Python Code](#documenting-python-code)
     
     4.1 - [Class/Function Docs](#code-documentation)
     
     4.2 - [Type Hinting](#type-hinting-guide)
 
-5. [Using Git](#using-git)
+6. [Using Git](#using-git)
 
-6. [Team/Contributors Info](#contributors)
+7. [Team/Contributors Info](#contributors)
 ___
 
 [PEP 8 – Style Guide for Python Code](https://peps.python.org/pep-0008/#introduction) - Guideline for how to code in Python
@@ -145,6 +147,12 @@ ___
     pip install numpy cryptography lgpio
     ```
 
+* Installing the sound subsystem:
+
+    ```bash
+    sudo apt install pulseaudio
+    ```
+
 * Installing package for audio
     ```bash
     cd ~
@@ -156,8 +164,15 @@ ___
     cd portaudio
     ```
     ```
-    ./configure --without-jack
+    ./configure --enable-shared --with-pulseaudio
     ```
+    * Ensure that when building, the pulse audio option is enabled otherwise try:
+
+        ```
+        make clean
+        ```
+
+
     ```
     make -j$(nproc)
     ```
@@ -168,13 +183,13 @@ ___
     sudo ldconfig
     ```
     * Run this command to make sure the package was installed:
-    ```
-    ldconfig -p | grep portaudio
-    ```
+        ```
+        ldconfig -p | grep portaudio
+        ```
     * If installed correctly install the package:
-    ```
-    pip install pyaudio
-    ```
+        ```
+        pip install pyaudio
+        ```
 
     ---
 
@@ -203,6 +218,84 @@ ___
 
 
 * Running each program individually should work now.
+
+## __Creating a daemon:__
+A daemon is a background process that runs continuously and independently of user interaction. It starts at boot (or when needed) and runs in the background, typically without a graphical interface. Daemons are often used for tasks like logging, networking, and running services (like web servers, audio managers, etc.). In the case of this project, a daemon is used to start the interface manager program on boot, and if it crashes, restarts the program.
+
+* Creating a Systemd Service:
+    ```bash
+    sudo nano /etc/systemd/system/run-py-program.service
+    ```
+    > This should be pasted and modified to use the correct python path, program directory, and *pi* username
+
+```
+[Unit]
+Description=My Python Script Daemon
+After=network.target sound.target
+Wants=pulseaudio.service
+
+
+[Service]
+ExecStart=/home/pi/git/senior-design-312/.env/bin/python /home/pi/git/senior-design-312/src/managers/interface_manager.py
+WorkingDirectory=/home/adamzoiss/git/senior-design-312
+Environment="PYTHONPATH=/home/pi/git/senior-design-312"
+User=pi
+Group=pi
+Restart=always
+RestartSec=5
+StandardOutput=append:/home/pi/git/senior-design-312/logs/system.log
+StandardError=append:/home/pi/git/senior-design-312/logs/system.err
+
+
+[Install]
+WantedBy=multi-user.target
+```
+
+* Allow Systemd to use pulse audio:
+
+    > By default, PulseAudio does not allow system services to access it. Run:
+
+    ```
+    sudo nano /etc/pulse/client.conf
+    ```
+    * At the end of the file, add:
+        ```
+        autospawn = yes
+        ```
+    * Then restart pulseaudio
+        ```
+        pulseaudio -k
+        pulseaudio --start
+        ```
+
+* Enabling and staring the daemon:
+
+    > To apply the changes made in the *.service* file:
+    ```
+    sudo systemctl daemon-reload
+    ```
+    > To enable:
+    ```
+    sudo systemctl enable run-py-program.service
+    ```
+    > To start:
+    ```
+    sudo systemctl start run-py-program.service
+    ```
+    > View the status:
+    ```
+    sudo systemctl status run-py-program.service
+    ```
+
+    * More useful commands:
+        ```
+        sudo systemctl disable run-py-program.service
+        sudo systemctl stop run-py-program.service
+        sudo systemctl restart run-py-program.service
+        ```
+
+
+
 
 ## __Documenting Python Code:__
 
