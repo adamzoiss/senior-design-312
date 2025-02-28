@@ -131,14 +131,9 @@ classifiers = [
 dependencies = [
             "numpy", 
             "cryptography", 
-            "lgpio", 
+            "lgpio; sys_platform == 'linux'",
             "pyaudio", 
-            "mypy", 
-            "pylance",
-            "pyarrow", 
-            "wave",
-            "pydub",
-            "scipy"
+            "pytest"
             ]
 
 
