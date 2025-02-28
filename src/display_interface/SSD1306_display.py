@@ -7,6 +7,7 @@ Description: Interfaces with the SSD1306 OLED display.
 
 import fcntl
 import os
+from typing import int, str
 from PIL import Image, ImageDraw, ImageFont
 from src.utils.interface_constants import *
 
@@ -31,7 +32,7 @@ class SSD1306:
         The drawing object to draw on the image.
     """
 
-    def __init__(self, i2c_bus=1, width=128, height=64):
+    def __init__(self: int, i2c_bus: int=1, width: int=128, height: int=64) -> int:
         """
         Initializes the SSD1306 display with the given I2C bus, width, and height.
 
@@ -55,7 +56,7 @@ class SSD1306:
         self.image = Image.new("1", (self.width, self.height), color=0)
         self.draw = ImageDraw.Draw(self.image)
 
-    def write_command(self, cmd):
+    def write_command(self: int, cmd: int) -> int:
         """
         Sends a command to the I2C device.
 
@@ -72,7 +73,7 @@ class SSD1306:
 
         os.write(self.i2c_dev, bytes([0x00, cmd]))
 
-    def write_data(self, data):
+    def write_data(self: int, data: int) -> int:
         """
         Writes data to the I2C device.
 
@@ -89,7 +90,7 @@ class SSD1306:
 
         os.write(self.i2c_dev, bytes([0x40]) + data)
 
-    def initialize_display(self):
+    def initialize_display(self: int) -> int:
         """
         Initializes the display with a series of commands.
 
@@ -133,7 +134,7 @@ class SSD1306:
         for cmd in init_cmds:
             self.write_command(cmd)
 
-    def clear_screen(self):
+    def clear_screen(self: int) -> int:
         """
         Clears the display by writing 0x00 to all GDDRAM and resets the image.
 
@@ -160,7 +161,7 @@ class SSD1306:
         # for _ in range(self.pages):
         #     self.write_data(bytes([0x00] * self.width))
 
-    def display_image(self):
+    def display_image(self: int) -> int:
         """
         Displays the image stored in the `self.image` attribute on the screen.
 
@@ -217,7 +218,7 @@ class SSD1306:
             self.write_command(0x10)  # Upper Column Start Address
             self.write_data(bytes(buffer[page * 128 : (page + 1) * 128]))
 
-    def clear_rectangle(self, x1, y1, x2, y2):
+    def clear_rectangle(self: int, x1: int, y1: int, x2: int, y2: int) -> int:
         """
         Clears a rectangular area on the display by setting the specified rectangle's pixels to 0 (off).
 
@@ -242,8 +243,8 @@ class SSD1306:
         self.draw.rectangle((x1, y1, x2, y2), fill=0)
 
     def start_scroll_vertical_right(
-        self, start_page=0, end_page=7, speed=2, vertical_offset=1
-    ):
+        self: int, start_page: int=0, end_page: int=7, speed: int=2, vertical_offset: int=1
+    ) -> int:
         """
         Initiates a vertical and right scroll on the display.
 
@@ -267,8 +268,8 @@ class SSD1306:
         self.write_command(0x2F)  # Start scrolling
 
     def start_scroll_vertical_left(
-        self, start_page=0, end_page=7, speed=2, vertical_offset=1
-    ):
+        self: int, start_page: int=0, end_page: int=7, speed: int=2, vertical_offset: int=1
+    ) -> int:
         """
         Initiates a vertical and left scroll on the display.
 
@@ -291,7 +292,7 @@ class SSD1306:
         self.write_command(vertical_offset)  # Vertical scroll offset
         self.write_command(0x2F)  # Start scrolling
 
-    def stop_scroll(self):
+    def stop_scroll(self: int) -> int:
         """
         Stops the scrolling on the display.
 
@@ -302,8 +303,8 @@ class SSD1306:
         self.write_command(0x2E)  # Stop scrolling
 
     def draw_text(
-        self, text, x=0, y=0, font_size=12, font_file="assets/arial.ttf"
-    ):
+        self: int, text: str, x: int=0, y: int=0, font_size: int=12, font_file: int="assets/arial.ttf"
+    ) -> list:
         """
         Draws text on the image at the specified coordinates with the given font size.
 
@@ -332,7 +333,7 @@ class SSD1306:
             font = ImageFont.load_default()
         self.draw.text((x, y), text, font=font, fill=1)
 
-    def draw_line(self, x1, y1, x2, y2, fill=1):
+    def draw_line(self: int, x1: int, y1: int, x2: int, y2: int, fill: int=1) -> int:
         """
         Draws a line on the display.
 
@@ -351,7 +352,7 @@ class SSD1306:
         """
         self.draw.line([x1, y1, x2, y2], fill=fill)
 
-    def draw_circle(self, x, y, radius, outline=1, fill=0):
+    def draw_circle(self: int, x: int, y: int, radius: int, outline: int=1, fill: int=0) -> int:
         """
         Draws a circle on the display.
 
@@ -375,14 +376,14 @@ class SSD1306:
         )
 
     def draw_rotated_text(
-        self,
-        text,
-        x=0,
-        y=0,
-        angle=0,
-        font_size=12,
-        font_file="assets/arial.ttf",
-    ):
+        self: int,
+        text: str,
+        x: int=0,
+        y: int=0,
+        angle: int=0,
+        font_size: int=12,
+        font_file: int="assets/arial.ttf",
+    ) -> list:
         """
         Draws rotated text on the display at the specified coordinates.
 
