@@ -7,7 +7,6 @@ Description: Interfaces with the SSD1306 OLED display.
 
 import fcntl
 import os
-from typing import int, str
 from PIL import Image, ImageDraw, ImageFont
 from src.utils.interface_constants import *
 import struct
