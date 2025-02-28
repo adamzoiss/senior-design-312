@@ -117,9 +117,10 @@ class InterfaceManager(GPIOInterface):
             # Check for if the encoder has been moved counter-clockwise
             if self.last_state_a != level:
                 ##############################################################
-                # Raise the volume
-                if self.volume < 100:
-                    self.volume += 5
+                # Lower the volume
+                if self.volume > 0:
+                    self.volume -= 5
+
                 ##############################################################
                 # # Lower bound for valid encoder position
                 # if self.position >= 0:
@@ -129,9 +130,9 @@ class InterfaceManager(GPIOInterface):
             # Check for if the encoder has been moved clockwise
             if self.last_state_b != level:
                 ##############################################################
-                # Lower the volume
-                if self.volume > 0:
-                    self.volume -= 5
+                # Raise the volume
+                if self.volume < 100:
+                    self.volume += 5
                 ##############################################################
                 # # Upper bound for valid encoder position
                 # if self.position < len(self.nav.CURRENT_SCREEN.SELECTIONS) - 1:

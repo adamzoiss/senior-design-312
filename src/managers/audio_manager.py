@@ -73,8 +73,8 @@ class AudioManager:
         self.RATE = 44100
 
         self.audio = pyaudio.PyAudio()
-        self.input_device_index = 1  # THIS VALUE CAN CHANGE
-        self.output_device_index = 0  # THIS VALUE CAN CHANGE
+        self.input_device_index = 3  # THIS VALUE CAN CHANGE
+        self.output_device_index = 2  # THIS VALUE CAN CHANGE
 
         self.input_stream = None
         self.output_stream = None
@@ -196,7 +196,7 @@ class AudioManager:
                 # Convert to NumPy array
                 audio_data = np.frombuffer(data, dtype=np.int16)
                 # Apply volume scaling
-                audio_data = (audio_data * (self.volume / 100)).astype(
+                audio_data = (audio_data * ((self.volume / 100))).astype(
                     np.int16
                 )
                 # Convert back to bytes
