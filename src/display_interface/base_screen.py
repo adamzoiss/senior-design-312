@@ -6,6 +6,7 @@ Description: This is the base class that will be inherited by
              different "Screen" classes.  
 """
 
+from typing import int, str
 from display_interface.SSD1306_display import *
 
 
@@ -23,7 +24,7 @@ class Screen:
         The currently selected option.
     """
 
-    def __init__(self, display: SSD1306):
+    def __init__(self: int, display: SSD1306) -> list:
         """
         Initializes the Screen with the specified display.
 
@@ -38,7 +39,7 @@ class Screen:
 
         self.CURRENT_SELECTION: int = self.SELECTIONS["NO_SELECTION"]
 
-    def select(self, selection: str):
+    def select(self: int, selection: str) -> list:
         """
         Selects an option and draws an arrow next to it.
 
