@@ -72,15 +72,27 @@ keywords = ["sample", "setuptools", "development"]
 # This should be your name or the name of the organization who originally
 # authored the project, and a valid email address corresponding to the name
 # listed.
-authors = [{ name = "A. Random Developer", email = "author@example.com" }]
+authors = [
+            { name = "Danielle Awoniyi", email = "danielle1.awoniyi@famu.edu" }, 
+            { name = "Travis Gabauer", email = "tg21b@fsu.edu" },
+            { name = "Amira McKaige", email = "amm21bc@fsu.edu" },
+            { name = "Amelia Wondracek", email = "amw21i@fsu.edu" },
+            { name = "Adam Zoiss", email = "aez18@fsu.edu" }
+            ]
+            
 
 # This should be your name or the names of the organization who currently
 # maintains the project, and a valid email address corresponding to the name
 # listed.
 maintainers = [
-  { name = "A. Great Maintainer", email = "maintainer@example.com" },
-]
+                { name = "Danielle Awoniyi", email = "danielle1.awoniyi@famu.edu" },
+                { name = "Travis Gabauer", email = "tg21b@fsu.edu" },
+                { name = "Amira McKaige", email = "amm21bc@fsu.edu" },
+                { name = "Amelia Wondracek", email = "amw21i@fsu.edu" },
+                { name = "Adam Zoiss", email = "aez18@fsu.edu" }
+                ]
 
+                
 # Classifiers help users find your project by categorizing it.
 #
 # For a list of valid classifiers, see https://pypi.org/classifiers/
@@ -116,7 +128,19 @@ classifiers = [
 #
 # For an analysis of this field vs pip's requirements files see:
 # https://packaging.python.org/discussions/install-requires-vs-requirements/
-dependencies = ["numpy"]
+dependencies = [
+            "numpy", 
+            "cryptography", 
+            "lgpio", 
+            "pyaudio", 
+            "mypy", 
+            "pylance",
+            "pyarrow", 
+            "wave",
+            "pydub",
+            "scipy"
+            ]
+
 
 # List additional groups of dependencies here (e.g. development
 # dependencies). Users will be able to install these using the "extras"

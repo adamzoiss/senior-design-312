@@ -23,7 +23,7 @@ class Screen:
         The currently selected option.
     """
 
-    def __init__(self, display: SSD1306):
+    def __init__(self: int, display: SSD1306) -> list:
         """
         Initializes the Screen with the specified display.
 
@@ -45,7 +45,7 @@ class Screen:
         self.display.clear_rectangle(50, 0, 110, 14)
         self.display.draw_text(f"Vol: {volume_percentage}%", x=50, y=2)
 
-    def select(self, selection: str):
+    def select(self: int, selection: str):
         """
         Selects an option and draws an arrow next to it.
 
