@@ -17,6 +17,7 @@ import threading
 from src.managers.crypto_manager import CryptoManager
 from src.utils.utils import *
 from src.logging.logging_config import *
+from src.managers.thread_manager import ThreadManager
 
 # Path and file names for the file types.
 PATH = "./audio_files/"
@@ -60,7 +61,7 @@ class AudioManager:
         Instance of the CryptoManager for encryption and decryption.
     """
 
-    def __init__(self):
+    def __init__(self, thread_manager: ThreadManager):
         """
         Initialize the AudioManager instance and configure default audio settings.
         """
@@ -73,8 +74,8 @@ class AudioManager:
         self.RATE = 44100
 
         self.audio = pyaudio.PyAudio()
-        self.input_device_index = 3  # THIS VALUE CAN CHANGE
-        self.output_device_index = 2  # THIS VALUE CAN CHANGE
+        self.input_device_index = 3  #! THIS VALUE CAN CHANGE
+        self.output_device_index = 2  #! THIS VALUE CAN CHANGE
 
         self.input_stream = None
         self.output_stream = None
@@ -83,33 +84,9 @@ class AudioManager:
         self.encryptor = CryptoManager()
 
         self.volume = 50  # Volume in %
-        self.TX_EVENT = threading.Event()
-        self.thread = None
+        self.thread_manager = thread_manager
 
         self.logger.info("AudioManager initialized.")
-
-    def start_thread(self):
-        """
-        Start a new thread to monitor audio.
-
-        This method starts a new thread that runs the `monitor_audio` method.
-        """
-        self.logger.debug("Starting thread")
-        self.TX_EVENT.clear()  # Reset the tx event
-        self.thread = threading.Thread(target=self.monitor_audio, daemon=True)
-        self.thread.start()
-
-    def stop_thread(self):
-        """
-        Stop the currently running audio monitoring thread.
-
-        This method sets the event to stop the thread and waits for it to finish.
-        """
-        self.logger.debug("Stopping thread")
-        self.TX_EVENT.set()
-        if self.thread:
-            self.thread.join()
-            self.logger.debug("Thread stopped")
 
     def find_devices(self):
         """
@@ -117,7 +94,7 @@ class AudioManager:
         """
         for i in range(self.audio.get_device_count()):
             device_info = self.audio.get_device_info_by_index(i)
-            print(f"Index {i}: {device_info['name']}")
+            self.logger.info(f"Index {i}: {device_info['name']}")
 
     def _open_streams(self):
         """
@@ -165,7 +142,7 @@ class AudioManager:
             self.output_stream.stop_stream()
             self.output_stream.close()
 
-    def monitor_audio(self):
+    def monitor_audio(self, stop_event: threading.Event):
         """
         Continuously monitor and play audio from the microphone.
 
@@ -181,27 +158,26 @@ class AudioManager:
         try:
             # Open the streams
             if self.audio.get_device_count() == 0:
-                # raise MemoryError("Can not open streams if no audio device.")
                 self.logger.warning("Can not open streams if no audio device.")
                 return
             else:
                 self._open_streams()
 
             # Monitor the audio
-            while not self.TX_EVENT.is_set():
+            while not stop_event.is_set():
                 data = self.input_stream.read(
                     self.CHUNK, exception_on_overflow=False
                 )
-
+                ###############################################################
                 # Convert to NumPy array
                 audio_data = np.frombuffer(data, dtype=np.int16)
                 # Apply volume scaling
-                audio_data = (audio_data * ((self.volume / 100))).astype(
-                    np.int16
-                )
+                volume_scalar = (self.volume / 100) * 4
+                audio_data = (audio_data * volume_scalar).astype(np.int16)
                 # Convert back to bytes
                 data = audio_data.tobytes()
-
+                ###############################################################
+                # Encrypt --> decrypt --> write to output stream
                 encrypted_data = self.encryptor.encrypt(data)
                 decrypted_data = self.encryptor.decrypt(encrypted_data)
                 self.output_stream.write(decrypted_data)
@@ -209,7 +185,7 @@ class AudioManager:
             self.logger.info("\nMonitoring stopped.\n")
         finally:
             self._close_streams()
-            # self.logger.info("Monitoring stopped.")
+            self.logger.info("Monitoring stopped.")
 
     def record_audio(self, output_file=AUDIO_FILE, monitoring=False):
         """
@@ -234,7 +210,7 @@ class AudioManager:
         ensure_path(str(output_dir))
 
         try:
-            print("Recording... Press Ctrl+C to stop.")
+            self.logger.debug("Recording... Press Ctrl+C to stop.")
             self._open_streams()
             frames = []  # List to store recorded frames
             try:
@@ -248,16 +224,16 @@ class AudioManager:
                     if monitoring:
                         self.output_stream.write(data)
             except KeyboardInterrupt:
-                print("\nRecording stopped.")
+                self.logger.debug("\nRecording stopped.")
                 # Save recorded audio to a WAV file
                 with wave.open(output_file, "wb") as wf:
                     wf.setnchannels(self.CHANNELS)
                     wf.setsampwidth(self.audio.get_sample_size(self.FORMAT))
                     wf.setframerate(self.RATE)
                     wf.writeframes(b"".join(frames))
-                print(f"Audio saved to {output_file}")
+                self.logger.debug(f"Audio saved to {output_file}")
         except Exception as e:
-            print(f"An error occurred: {e}")
+            self.logger.error(f"An error occurred: {e}")
         finally:
             self._close_streams()
 
@@ -286,7 +262,7 @@ class AudioManager:
         ensure_path(str(output_dir))
 
         try:
-            print("Recording... Press Ctrl+C to stop.")
+            self.logger.debug("Recording... Press Ctrl+C to stop.")
             self._open_streams()
             frames = []
             try:
@@ -299,17 +275,19 @@ class AudioManager:
                     if monitoring:
                         self.output_stream.write(data)
             except KeyboardInterrupt:
-                print("\nRecording stopped.")
+                self.logger.debug("\nRecording stopped.")
                 with wave.open(output_file, "wb") as wf:
                     wf.setnchannels(self.CHANNELS)
                     wf.setsampwidth(self.audio.get_sample_size(self.FORMAT))
                     wf.setframerate(self.RATE)
                     wf.writeframes(b"".join(frames))
-                print(f"Audio saved to {output_file}")
+                self.logger.debug(f"Audio saved to {output_file}")
         except PermissionError:
-            print(f"Permission denied: Unable to write to {output_file}")
+            self.logger.warning(
+                f"Permission denied: Unable to write to {output_file}"
+            )
         except Exception as e:
-            print(f"An error occurred: {e}")
+            self.logger.error(f"An error occurred: {e}")
         finally:
             self._close_streams()
 
@@ -344,7 +322,7 @@ class AudioManager:
 
         # Check if the input file exists
         if not os.path.exists(input_file_path):
-            print(f"Error: {input_file_path} does not exist.")
+            self.logger.error(f"Error: {input_file_path} does not exist.")
             return
 
         with open(input_file_path, "rb") as f:
@@ -356,7 +334,7 @@ class AudioManager:
         with open(output_file_path, "wb") as f:
             f.write(encrypted_data)
 
-        print(f"Encrypted audio saved to {output_file}")
+        self.logger.debug(f"Encrypted audio saved to {output_file}")
 
     def decrypt_audio_file(
         self, input_file=ENCRYPTED_AUDIO_FILE, output_file=DECRYPTED_AUDIO_FILE
@@ -389,11 +367,11 @@ class AudioManager:
 
         # Check if the input file exists
         if not os.path.exists(input_file_path):
-            print(f"Error: {input_file_path} does not exist.")
+            self.logger.error(f"Error: {input_file_path} does not exist.")
             return
 
         try:
-            print(f"Decrypting {input_file}...")
+            self.logger.debug(f"Decrypting {input_file}...")
             # Read encrypted data from the file
             with open(input_file, "rb") as encrypted_file:
                 encrypted_data = encrypted_file.read()
@@ -408,9 +386,9 @@ class AudioManager:
                 wf.setframerate(self.RATE)
                 wf.writeframes(decrypted_data)
 
-            print(f"Decrypted audio saved to {output_file}")
+            self.logger.debug(f"Decrypted audio saved to {output_file}")
         except Exception as e:
-            print(f"An error occurred during decryption: {e}")
+            self.logger.error(f"An error occurred during decryption: {e}")
 
     def decrypt_audio_file_chunked(
         self,
@@ -445,11 +423,11 @@ class AudioManager:
 
         # Check if the input file exists
         if not os.path.exists(input_file_path):
-            print(f"Error: {input_file_path} does not exist.")
+            self.logger.error(f"Error: {input_file_path} does not exist.")
             return
 
         try:
-            print(f"Decrypting {input_file}...")
+            self.logger.debug(f"Decrypting {input_file}...")
             decrypted_frames = []
 
             # Open the encrypted audio file
@@ -473,9 +451,9 @@ class AudioManager:
                 wf.setframerate(frame_rate)
                 wf.writeframes(b"".join(decrypted_frames))
 
-            print(f"Decrypted audio saved to {output_file}")
+            self.logger.debug(f"Decrypted audio saved to {output_file}")
         except Exception as e:
-            print(f"An error occurred during decryption: {e}")
+            self.logger.error(f"An error occurred during decryption: {e}")
 
     def terminate(self):
         """
@@ -489,19 +467,27 @@ class AudioManager:
 
 if __name__ == "__main__":
     handler = AudioManager()
-    print("1. Monitor audio")
-    print("2. Record audio")
-    print("3. Record & encrypt an audio stream")
-    print("4. Discover devices")
-    print("5. Encrypt an audio file")
-    print("6. Decrypt an audio file")
-    print("7. Decrypt an audio stream")
+    print(
+        (
+            "1. Monitor audio\n"
+            "2. Record audio\n"
+            "3. Record & encrypt an audio stream\n"
+            "4. Discover devices\n"
+            "5. Encrypt an audio file\n"
+            "6. Decrypt an audio file\n"
+            "7. Decrypt an audio stream\n"
+        )
+    )
 
     choice = input("Choose an option (1/2/3/4/5/6/7): ").strip()
 
     try:
         if choice == "1":
-            handler.monitor_audio()
+            handler.thread_manager.start_thread(
+                "Audio Monitor", handler.monitor_audio
+            )
+            input("Press Enter to stop monitoring.")
+            handler.thread_manager.stop_thread("Audio Monitor")
         elif choice == "2":
             handler.record_audio()
         elif choice == "3":
@@ -530,4 +516,5 @@ if __name__ == "__main__":
         else:
             print("Invalid choice.")
     finally:
+        handler.thread_manager.stop_all_threads()
         handler.terminate()

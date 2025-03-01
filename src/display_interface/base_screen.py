@@ -90,6 +90,12 @@ class Screen:
                     fill=1,
                 )
 
+    def draw_screen(self):
+        """
+        Draws the screen.
+        """
+        pass
+
 
 if __name__ == "__main__":
     # Initialize the display (assuming the SSD1306 class has an appropriate constructor)

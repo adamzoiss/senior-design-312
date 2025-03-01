@@ -36,6 +36,7 @@ class NavigationManager(Menu, Mode):
         self.display = display
         self.MENU = Menu(self.display)
         self.MODE = Mode(self.display)
+        self.DEBUG = Debug(self.display)
 
         self.CURRENT_SCREEN = self.MENU
 
@@ -52,18 +53,17 @@ class NavigationManager(Menu, Mode):
             The screen to set as the current screen.
         """
         if screen is Menu:
+            # Draw menu screen
             self.CURRENT_SCREEN = self.MENU
-            # Draw text
-            self.display.draw_text("MENU", x=5, y=2, font_size=12)
-            self.display.draw_text("Settings", x=5, y=20, font_size=10)
-            self.display.draw_text("Mode", x=5, y=35, font_size=10)
+            self.CURRENT_SCREEN.draw_screen()
         elif screen is Mode:
+            # Draw mode screen
             self.CURRENT_SCREEN = self.MODE
-            # Draw text
-            self.display.draw_text("Mode Select", x=5, y=2, font_size=12)
-            self.display.draw_text("Radio", x=5, y=20, font_size=10)
-            self.display.draw_text("Local", x=5, y=35, font_size=10)
-            self.display.draw_text("Debug", x=5, y=50, font_size=10)
+            self.CURRENT_SCREEN.draw_screen()
+        elif screen is Debug:
+            # Draw debug screen
+            self.CURRENT_SCREEN = self.DEBUG
+            self.CURRENT_SCREEN.draw_screen()
         else:
             print("ERROR")
 
