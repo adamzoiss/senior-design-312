@@ -1,6 +1,5 @@
 import logging
 from logging.handlers import RotatingFileHandler
-from src.utils.utils import get_proj_root, Path
 
 
 def setup_logger(

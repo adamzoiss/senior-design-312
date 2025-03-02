@@ -9,7 +9,7 @@ import fcntl
 import os
 from PIL import Image, ImageDraw, ImageFont
 from src.utils.interface_constants import *
-import struct
+from src.managers.thread_manager import ThreadManager
 
 
 class SSD1306:
@@ -32,7 +32,13 @@ class SSD1306:
         The drawing object to draw on the image.
     """
 
-    def __init__(self, i2c_bus: int = 1, width: int = 128, height: int = 64):
+    def __init__(
+        self,
+        thread_manager: ThreadManager,
+        i2c_bus: int = 1,
+        width: int = 128,
+        height: int = 64,
+    ):
         """
         Initializes the SSD1306 display with the given I2C bus, width, and height.
 
@@ -45,6 +51,8 @@ class SSD1306:
         height : int, optional
             The height of the display in pixels. Defaults to 64.
         """
+        self.thread_manager = thread_manager
+
         self.width = width
         self.height = height
         self.pages = height // 8  # 64 rows -> 8 pages of 8 rows each
@@ -167,10 +175,10 @@ class SSD1306:
         self.write_command(0x00)  # Page Start
         self.write_command(0x07)  # Page End
 
-        for _ in range(128 * (64 // 8)):  # 128 * 8
-            self.write_data(bytes([0x00]))  # Clear all pixels
-        # for _ in range(self.pages):
-        #     self.write_data(bytes([0x00] * self.width))
+        # for _ in range(128 * (64 // 8)):  # 128 * 8
+        #     self.write_data(bytes([0x00]))  # Clear all pixels
+        for _ in range(self.pages):
+            self.write_data(bytes([0x00] * self.width))
 
     def display_image(self):
         """
@@ -187,32 +195,6 @@ class SSD1306:
             If `self.image` is not defined or does not have a `load` method.
         """
         buffer = []
-        # #####################################
-        # Lines separating yellow from blue segment
-        self.draw_line(0, 15, 127, 15, fill=1)
-        self.draw_line(0, 16, 127, 16, fill=1)
-        # #####################################
-        # Display interface usage on screen
-        self.draw_circle(102, 40, 10, fill=None)
-        self.draw_circle(102, 40, 23, fill=None)
-        # Switch 1 - Select
-        self.draw_text("SEL", 95, 36, font_size=8)
-        # Switch 2 - Down arrow
-        self.draw_text(
-            "D", 99, 51, font_size=14, font_file="assets/Arrows.ttf"
-        )
-        # Switch 3 - Transmit/Monitor
-        # TODO - implement
-        # Switch 4 - Up arrow
-        self.draw_text(
-            "C", 99, 18, font_size=14, font_file="assets/Arrows.ttf"
-        )
-        # Switch 5 - Return arrow
-        self.draw_rotated_text(
-            "u", 86, 40, angle=90, font_size=12, font_file="assets/arrow_7.ttf"
-        )
-        # #####################################
-
         pixels = self.image.load()
 
         for page in range(0, self.height, 8):  # 8 rows per page
@@ -228,6 +210,16 @@ class SSD1306:
             self.write_command(0x00)  # Lower Column Start Address
             self.write_command(0x10)  # Upper Column Start Address
             self.write_data(bytes(buffer[page * 128 : (page + 1) * 128]))
+
+    def refresh_display(self):
+        """
+        Refreshes the display by displaying the image on the screen.
+
+        This method clears the screen, draws the constants, and
+        sends the image buffer to the display to refresh the screen.
+        """
+        self.draw_constants()
+        self.display_image()
 
     def clear_rectangle(self, x1: int, y1: int, x2: int, y2: int):
         """
@@ -349,10 +341,8 @@ class SSD1306:
             If the specified font file cannot be found, the default font is used.
         """
         try:
-            font = ImageFont.truetype(
-                font_file, font_size
-            )  # Use built-in Arial font
-            # print("Font loaded!")
+            # Use built-in Arial font
+            font = ImageFont.truetype(font_file, font_size)
         except IOError:
             font = ImageFont.load_default()
         self.draw.text((x, y), text, font=font, fill=1)
@@ -455,6 +445,49 @@ class SSD1306:
             rotated_text,
         )
 
+    def draw_constants(self):
+        """
+        Handles drawing constant images to the display.
+        This function is responsible for rendering predefined constant images or
+        patterns on the SSD1306 OLED display. It utilizes the drawing methods
+        provided by the SSD1306 class to create and display these images.
+        Notes
+
+        This function does not take any parameters and does not return any values.
+        It directly modifies the display content by drawing on the internal image
+        buffer and updating the display.
+        """
+        # #####################################
+        # Lines separating yellow from blue segment
+        self.draw_line(0, 15, 127, 15, fill=1)
+        # #####################################
+        # Display interface usage on screen
+        self.draw_circle(102, 39, 10, fill=None)
+        self.draw_circle(102, 39, 23, fill=None)
+        # Switch 1 - Select
+        self.draw_text("SEL", 95, 35, font_size=8)
+        # Switch 2 - Down arrow
+        self.draw_text(
+            "D", 99, 50, font_size=14, font_file="assets/Arrows.ttf"
+        )
+        # Switch 3 - Transmit/Monitor
+        self.draw_text(
+            "tx",
+            114,
+            33,
+            font_size=10,
+            font_file="assets/arial.ttf",
+        )
+        # Switch 4 - Up arrow
+        self.draw_text(
+            "C", 99, 17, font_size=14, font_file="assets/Arrows.ttf"
+        )
+        # Switch 5 - Return arrow
+        self.draw_rotated_text(
+            "u", 86, 39, angle=90, font_size=12, font_file="assets/arrow_7.ttf"
+        )
+        # #####################################
+
 
 if __name__ == "__main__":
     display = SSD1306()
@@ -471,6 +504,8 @@ if __name__ == "__main__":
     end_time = time.time()
     time_taken = (end_time - start_time) * 1_000_000  # Convert to microseconds
     print(f"Time taken to display image: {time_taken:.2f} microseconds")
+
+    display.refresh_display()
 
     import time
 

@@ -47,4 +47,4 @@ I2C_SLAVE = 0x0703  # ioctl command to set device address
 SSD1306_I2C_ADDR = 0x3C  # Common I2C address for SSD1306
 
 # Debounce time in microseconds
-DEBOUNCE_MICRO = 1000  # 10ms
+DEBOUNCE_MICRO = 10000  # 10ms
