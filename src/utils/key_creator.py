@@ -6,7 +6,6 @@ Description: Utility for creating hybrid encryption keys using existing AES and 
 """
 
 import shutil
-
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import serialization, hashes
 from pathlib import Path
@@ -19,8 +18,15 @@ class KeyCreator:
         self.keys_dir.mkdir(exist_ok=True)
 
     def verify_base_keys_exist(self, missing = True):
-        """find a USB drive by checking the device's mount points"""
-        
+        """
+        Search USB drives and copy required key files to the Keys folder
+
+            Parameters:
+            -----------
+            missing : bool
+                Determines if any files are missing, throws error if it goes unchanged
+
+        """        
         from string import ascii_uppercase
         drive_options = [Path(f"{letter}:\\") for letter in ascii_uppercase]    #cycle through connected USB devices, store them in drive_options
 
