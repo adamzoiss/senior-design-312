@@ -6,7 +6,7 @@ Description: Utility for creating hybrid encryption keys using existing AES and 
 """
 
 import shutil
-import os
+
 import platform
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import serialization, hashes
@@ -19,7 +19,7 @@ class KeyCreator:
         self.keys_dir = Path(get_proj_root()) / "keys"
         self.keys_dir.mkdir(exist_ok=True)
 
-    def verify_base_keys_exist(self):
+    def verify_base_keys_exist(self, missing = True):
         """find a USB drive by checking the device's mount points"""
         
         from string import ascii_uppercase
@@ -28,13 +28,20 @@ class KeyCreator:
         required_files = ["aes.txt", "public_key.pem", "private_key.pem"]
 
         for drive in drive_options:     #cycle through all USB devices
-            if drive.exists() and os.path.ismount(drive):
-                missing_files = [f for f in required_files if not (drive / f).exists()]     #check if any required files are missing
-                if not missing_files:
-                    for file in required_files:
-                        src = drive / file
-                        dest  = self.keys_dir / file
-                        shutil.copy2(src, dest)
+            missing_files = [f for f in required_files if not (drive / f).exists()]     #check if any required files are missing
+            if not missing_files:
+                missing = False
+                for file in required_files:     #if no required files missing, make copies and send to the Keys folder
+                    src = drive / file
+                    dest  = self.keys_dir / file
+                    shutil.copy2(src, dest)
+                print("Successfully copied key files")
+        
+        if missing:
+            raise FileNotFoundError(
+                f"Missing required key files: {', '.join(missing_files)}\n"
+                f"Please ensure all required keys are in your USB drive"
+            )
         return None
 
     def create_hybrid_keys(self, force=False):
