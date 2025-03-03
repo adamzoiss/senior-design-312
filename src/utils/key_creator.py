@@ -7,7 +7,6 @@ Description: Utility for creating hybrid encryption keys using existing AES and 
 
 import shutil
 
-import platform
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import serialization, hashes
 from pathlib import Path
