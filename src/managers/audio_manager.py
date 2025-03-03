@@ -71,11 +71,11 @@ class AudioManager:
         self.CHUNK = 32  # Affects latency for monitoring
         self.FORMAT = pyaudio.paInt16
         self.CHANNELS = 1
-        self.RATE = 44100
+        self.RATE = 8000
 
         self.audio = pyaudio.PyAudio()
-        self.input_device_index = 3  #! THIS VALUE CAN CHANGE
-        self.output_device_index = 2  #! THIS VALUE CAN CHANGE
+        self.input_device_index = 4  #! THIS VALUE CAN CHANGE
+        self.output_device_index = 0  #! THIS VALUE CAN CHANGE
 
         self.input_stream = None
         self.output_stream = None
@@ -141,6 +141,25 @@ class AudioManager:
         if self.output_stream:
             self.output_stream.stop_stream()
             self.output_stream.close()
+
+    def write_packet_to_output_stream(self, packet_data):
+        """
+        Write packet data to the output stream.
+
+        Parameters
+        ----------
+        packet_data : bytes
+            The packet data to be written to the output stream.
+        """
+        try:
+            if self.output_stream:
+                self.output_stream.write(bytes(packet_data))
+            else:
+                self.logger.warning("Output stream is not open.")
+        except Exception as e:
+            self.logger.error(
+                f"An error occurred while writing to output stream: {e}"
+            )
 
     def monitor_audio(self, stop_event: threading.Event):
         """
@@ -466,7 +485,9 @@ class AudioManager:
 
 
 if __name__ == "__main__":
-    handler = AudioManager()
+    tm = ThreadManager()
+    handler = AudioManager(tm)
+
     print(
         (
             "1. Monitor audio\n"
