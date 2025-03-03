@@ -5,7 +5,9 @@ File : key_creator.py
 Description: Utility for creating hybrid encryption keys using existing AES and RSA keys.
 """
 
+import shutil
 import os
+import platform
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import serialization, hashes
 from pathlib import Path
@@ -18,17 +20,22 @@ class KeyCreator:
         self.keys_dir.mkdir(exist_ok=True)
 
     def verify_base_keys_exist(self):
-        """Verify that the required base keys exist."""
-        required_files = ["aes.txt", "public_key.pem", "private_key.pem"]
-        missing_files = [f for f in required_files 
-                        if not (self.keys_dir / f).exists()]
+        """find a USB drive by checking the device's mount points"""
         
-        if missing_files:
-            raise FileNotFoundError(
-                f"Missing required key files: {', '.join(missing_files)}\n"
-                f"Please ensure all required keys are in: {self.keys_dir}"
-            )
-        return True
+        from string import ascii_uppercase
+        drive_options = [Path(f"{letter}:\\") for letter in ascii_uppercase]    #cycle through connected USB devices, store them in drive_options
+
+        required_files = ["aes.txt", "public_key.pem", "private_key.pem"]
+
+        for drive in drive_options:     #cycle through all USB devices
+            if drive.exists() and os.path.ismount(drive):
+                missing_files = [f for f in required_files if not (drive / f).exists()]     #check if any required files are missing
+                if not missing_files:
+                    for file in required_files:
+                        src = drive / file
+                        dest  = self.keys_dir / file
+                        shutil.copy2(src, dest)
+        return None
 
     def create_hybrid_keys(self, force=False):
         """
