@@ -11,7 +11,7 @@ import lgpio
 from utils.interface_constants import *
 
 
-class GPIOInterface:
+class GPIOHandler:
     """
     A class to handle the GPIO interface setup with the Raspberry Pi.
 
@@ -166,6 +166,6 @@ class GPIOInterface:
 if __name__ == "__main__":
     import time
 
-    gpio_interface = GPIOInterface()
+    gpio_interface = GPIOHandler()
     while True:
         time.sleep(1)

@@ -18,7 +18,7 @@ import struct
 
 from src.managers.crypto_manager import CryptoManager
 from src.utils.utils import *
-from src.logging.logging_config import *
+from src.logging.logger import *
 from src.managers.thread_manager import ThreadManager
 
 # Path and file names for the file types.
@@ -77,7 +77,7 @@ class AudioManager:
         Initialize the AudioManager instance and configure default audio settings.
         """
         # Set up logging
-        self.logger: logging = setup_logger("AudioManager")
+        self.logger = Logger("AudioManager", console_level=logging.DEBUG)
 
         self.CHUNK = frame_size  # Affects latency for monitoring
         self.FORMAT = format

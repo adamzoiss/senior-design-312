@@ -7,14 +7,14 @@ Description: This will handle the interface with the rpi. GPIO pins will be set 
 """
 
 import time
-from src.managers.navigation_manager import *
-from src.gpio_interface.gpio_interface import *
+from src.handlers.display_handler import *
+from handlers.gpio_handler import *
 from src.managers.audio_manager import *
-from src.logging.logging_config import setup_logger
+from src.logging.logger import *
 from src.managers.thread_manager import ThreadManager
 
 
-class InterfaceManager(GPIOInterface):
+class InterfaceManager(GPIOHandler):
     """
     A class to manage the interface with the Raspberry Pi, including GPIO pins setup and handling.
 
@@ -26,7 +26,7 @@ class InterfaceManager(GPIOInterface):
         The last state value for encoder A.
     last_state_b : int
         The last state value for encoder B.
-    nav : NavigationManager
+    nav : DisplayHandler
         The navigation manager for the display.
     audio_man : AudioManager
         The audio manager for handling audio operations.
@@ -63,7 +63,12 @@ class InterfaceManager(GPIOInterface):
         self.thread_manager = thread_manager
         #################################################
         # Set up logging
-        self.logger: logging = setup_logger("InterfaceManager", overwrite=True)
+        self.logger: logging = Logger(
+            "InterfaceManager",
+            overwrite=True,
+            console_level=logging.INFO,
+            console_logging=True,
+        )
         ##################################################
         # Variable for volume
         self.volume = 50
@@ -84,7 +89,7 @@ class InterfaceManager(GPIOInterface):
         # Display set up
         try:
             self.display = SSD1306(thread_manager)
-            self.nav = NavigationManager(self.display)
+            self.nav = DisplayHandler(self.display)
             self.nav.display.clear_screen()
             self.nav.get_screen(Menu)
             self.nav.CURRENT_SCREEN.update_volume(self.volume)

@@ -1,14 +1,14 @@
 """
 Senior Project : Hardware Encryption Device
 Team 312
-File : navigation_manager.py
+File : display_handler.py
 Description: Handles interfacing with the display and navigation options.
 """
 
-from display_interface.screens import *
+from src.handlers.display.screens import *
 
 
-class NavigationManager(Menu, Mode):
+class DisplayHandler(Menu, Mode):
     """
     A class to handle navigation between different screens.
 
@@ -26,7 +26,7 @@ class NavigationManager(Menu, Mode):
 
     def __init__(self, display: SSD1306):
         """
-        Initializes the NavigationManager with the specified display.
+        Initializes the DisplayHandler with the specified display.
 
         Parameters
         ----------
@@ -109,7 +109,7 @@ class NavigationManager(Menu, Mode):
 if __name__ == "__main__":
     # Example Usage
     display = SSD1306()
-    navigation = NavigationManager(display)
+    navigation = DisplayHandler(display)
     navigation.display.clear_screen()
     #####################################
     navigation.get_screen(Menu)

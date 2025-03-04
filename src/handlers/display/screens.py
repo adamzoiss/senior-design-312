@@ -10,7 +10,7 @@ import threading
 from collections import deque
 import time
 
-from display_interface.base_screen import *
+from src.handlers.display.base_screen import *
 from src.utils.utils import parse_log_line
 
 
