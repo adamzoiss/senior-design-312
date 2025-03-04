@@ -20,32 +20,47 @@ import os
 import scipy.signal as signal
 import numpy as np
 
+# Audio settings
+FORMAT = pyaudio.paInt16
+CHANNELS = 1
+RATE = 16000
+FRAME_SIZE = 960  # 20ms Opus frame at 48kHz
+PACKET_SIZE = 60  # Radio transceiver limit
+BUFFER_TIMEOUT = 2  # Max seconds to wait for a missing packet
+
+tm = ThreadManager()
+am = AudioManager(
+    tm,
+    frame_size=FRAME_SIZE,
+    format=FORMAT,
+    channels=1,
+    sample_rate=RATE,
+    in_device_index=4,
+    out_device_index=0,
+)
+am._open_output_stream()
+
+# Queue to store received packets
+packet_queue = queue.Queue()
+
+# Initialize Opus decoder
+decoder = opuslib.Decoder(RATE, CHANNELS)
 
 # Clear the received audio file at the start of the program
-with open("received_audio.mp3", "wb") as f:
+with open("received_audio.wav", "wb") as f:
     pass
 
 
-def save_packet_to_file(packet, filename="received_audio.mp3"):
+def save_packet_to_file(packet, filename="received_audio.wav"):
     with open(filename, "ab") as f:
         f.write(packet)
-        write_packet_to_output_stream(packet)
 
 
 def _callback(chip, gpio, level, timestamp):
-    # print(
-    #     (
-    #         f"Chip: {chip} | "
-    #         f"GPIO{gpio} | "
-    #         f"Level: {level} | "
-    #         f"Timestamp: {timestamp}"
-    #     )
-    # )
     if rfm69.payload_ready:
         packet = rfm69.receive(timeout=None)
         if packet is not None:
-
-            save_packet_to_file(packet)
+            packet_queue.put(packet)
 
 
 # Define radio parameters.
@@ -71,29 +86,57 @@ print("Bit rate: {0}kbit/s".format(rfm69.bitrate / 1000))
 print("Frequency deviation: {0}hz".format(rfm69.frequency_deviation))
 
 rfm69.listen()
+print("Waiting for packets...")
 
-
-# Send a packet.  Note you can only send a packet up to 60 bytes in length.
-# This is a limitation of the radio packet size, so if you need to send larger
-# amounts of data you will need to break it into smaller send calls.  Each send
-# call will wait for the previous one to finish before continuing.
-# rfm69.send(bytes("Hello world!\r\n", "utf-8"), keep_listening=True)
-# print("Sent hello world message!")
-# If you don't wawnt to send a message to start you can just start lintening
-
-# Wait to receive packets.  Note that this library can't receive data at a fast
-# rate, in fact it can only receive and process one 60 byte packet at a time.
-# This means you should only use this for low bandwidth scenarios, like sending
-# and receiving a single message at a time.
-print("Waiting for audio...")
+# global frame_buffer
+global frame_buffer, last_packet_time
+frame_buffer = b""
+last_packet_time = time.time()
 
 try:
-    # the loop is where you can do any desire processing
-    # the global variable packet_received can be used to determine if a packet was received.
     while True:
+        try:
+            # Get next packet, wait up to BUFFER_TIMEOUT seconds
+            packet = packet_queue.get(timeout=BUFFER_TIMEOUT)
+            # last_packet_time = time.time()  # Update last packet timestamp
+            frame_buffer += packet  # Collect incoming packets
+
+            # Process frames
+            while len(frame_buffer) >= 2:
+                frame_size = struct.unpack_from("H", frame_buffer, 0)[
+                    0
+                ]  # Read stored frame size
+
+                # Ensure we have the full frame before processing
+                if len(frame_buffer) < 2 + frame_size:
+                    break  # Wait for more data
+
+                # Extract full Opus frame
+                opus_frame = frame_buffer[2 : 2 + frame_size]
+                frame_buffer = frame_buffer[
+                    2 + frame_size :
+                ]  # Remove processed data
+
+                # Decode and play audio
+                try:
+                    decoded_audio = decoder.decode(opus_frame, FRAME_SIZE)
+                    am.output_stream.write(decoded_audio)
+                except opuslib.exceptions.OpusError as e:
+                    print(f"Opus decoding error: {e}")
+
+        except queue.Empty:
+            # Timeout reached, check for lost packets
+            # if time.time() - last_packet_time > BUFFER_TIMEOUT:
+            #     print("Warning: Packet loss detected, inserting silence.")
+            #     silent_audio = b"\x00" * (
+            #         FRAME_SIZE * 2
+            #     )  # Insert silence to maintain sync
+            #     # am.output_stream.write(silent_audio)
+            #     last_packet_time = time.time()
+            pass
         # the sleep time is arbitrary since any incomming packe will trigger an interrupt
         # and be received.
-        time.sleep(0.1)
+        # time.sleep(0.1)
 except KeyboardInterrupt:
     pass
 finally:

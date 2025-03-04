@@ -10,9 +10,11 @@ Description: This is the audio driver for the project. By itself it is able to r
 
 import pyaudio
 import wave
+import opuslib
 import numpy as np
 import os
 import threading
+import struct
 
 from src.managers.crypto_manager import CryptoManager
 from src.utils.utils import *
@@ -61,21 +63,30 @@ class AudioManager:
         Instance of the CryptoManager for encryption and decryption.
     """
 
-    def __init__(self, thread_manager: ThreadManager):
+    def __init__(
+        self,
+        thread_manager: ThreadManager,
+        frame_size=40,
+        format=pyaudio.paInt16,
+        channels=1,
+        sample_rate=16000,
+        in_device_index=4,
+        out_device_index=0,
+    ):
         """
         Initialize the AudioManager instance and configure default audio settings.
         """
         # Set up logging
         self.logger: logging = setup_logger("AudioManager")
 
-        self.CHUNK = 32  # Affects latency for monitoring
-        self.FORMAT = pyaudio.paInt16
-        self.CHANNELS = 1
-        self.RATE = 8000
+        self.CHUNK = frame_size  # Affects latency for monitoring
+        self.FORMAT = format
+        self.CHANNELS = channels
+        self.RATE = sample_rate
 
         self.audio = pyaudio.PyAudio()
-        self.input_device_index = 4  #! THIS VALUE CAN CHANGE
-        self.output_device_index = 0  #! THIS VALUE CAN CHANGE
+        self.input_device_index = in_device_index  #! THIS VALUE CAN CHANGE
+        self.output_device_index = out_device_index  #! THIS VALUE CAN CHANGE
 
         self.input_stream = None
         self.output_stream = None
@@ -101,6 +112,14 @@ class AudioManager:
         Open the audio input and output streams.
         """
         # Configure and open the input stream
+        self._open_input_stream()
+        # Configure and open the output stream
+        self._open_output_stream()
+
+    def _open_input_stream(self):
+        """
+        Open the audio input stream.
+        """
         try:
             self.input_stream = self.audio.open(
                 format=self.FORMAT,
@@ -114,7 +133,11 @@ class AudioManager:
             self.logger.warning(
                 f"Encountered exception with input stream: {e}"
             )
-        # Configure and open the output stream
+
+    def _open_output_stream(self):
+        """
+        Open the audio output stream.
+        """
         try:
             self.output_stream = self.audio.open(
                 format=self.FORMAT,
@@ -483,10 +506,119 @@ class AudioManager:
         # Terminate the PyAudio session
         self.audio.terminate()
 
+    def record_encoded_audio(self):
+        """
+        Record audio from the microphone, encode it using the Opus codec, and save it to a file.
+
+        This method records audio from the microphone, encodes it using the Opus codec,
+        and saves the encoded audio to a file.
+
+        Raises
+        ------
+        KeyboardInterrupt
+            Stops recording when Ctrl+C is pressed.
+        """
+        # Get the parent directory of the current script
+        parent_dir = get_proj_root()
+        # Create the target folder path in the parent directory
+        output_dir = os.path.join(parent_dir, PATH)
+        # Construct the full path for the output file
+        output_file = os.path.join(output_dir, "recorded_audio.opus")
+        # Ensure that the path exists, and if doesn't is created.
+        ensure_path(str(output_dir))
+
+        # Create Opus encoder
+        encoder = opuslib.Encoder(
+            self.RATE, self.CHANNELS, application=opuslib.APPLICATION_AUDIO
+        )
+
+        self._open_input_stream()
+
+        # Open file to write encoded audio
+        with open(output_file, "wb") as file:
+            print("Recording... Press Ctrl+C to stop.")
+            try:
+                while True:
+                    data = self.input_stream.read(
+                        self.CHUNK, exception_on_overflow=False
+                    )
+                    encoded = encoder.encode(data, self.CHUNK)
+
+                    # Write the length of the encoded frame first (to aid decoding)
+                    file.write(
+                        struct.pack("H", len(encoded))
+                    )  # Store frame size (2 bytes)
+                    file.write(encoded)  # Store actual Opus frame data
+            except KeyboardInterrupt:
+                print("\nRecording stopped.")
+                # Close input stream
+                self.input_stream.stop_stream()
+                self.input_stream.close()
+
+    def play_encoded_audio(self):
+        """
+        Play back audio that has been encoded using the Opus codec.
+
+        This method reads an Opus-encoded audio file, decodes it using the Opus codec,
+        and plays back the decoded audio.
+        """
+        # Get the parent directory of the current script
+        parent_dir = get_proj_root()
+        # Create the target folder path in the parent directory
+        output_dir = os.path.join(parent_dir, PATH)
+        # Construct the full path for the output file
+        input_file = os.path.join(output_dir, "recorded_audio.opus")
+
+        self._open_output_stream()
+
+        # Open file to read encoded audio
+        with open(input_file, "rb") as file:
+            encoded_data = file.read()
+
+        # Decode Opus audio
+        decoder = opuslib.Decoder(self.RATE, self.CHANNELS)
+        decoded_frames = []
+        offset = 0
+
+        while offset < len(encoded_data):
+            try:
+                # Read stored frame size first
+                frame_size = struct.unpack_from("H", encoded_data, offset)[0]
+                offset += 2  # Move past the frame size bytes
+
+                # Extract frame data
+                chunk = encoded_data[offset : offset + frame_size]
+                offset += frame_size  # Move past the actual frame data
+
+                # Decode the frame
+                decoded = decoder.decode(chunk, self.CHUNK)
+                decoded_frames.append(decoded)
+            except (opuslib.exceptions.OpusError, struct.error) as e:
+                print(f"Opus decoding error: {e}")
+                break
+
+        # Combine all decoded frames
+        decoded_audio = b"".join(decoded_frames)
+
+        # Play back the decoded audio
+        self.output_stream.write(decoded_audio)
+
+        # Close output stream
+        self.output_stream.stop_stream()
+        self.output_stream.close()
+
 
 if __name__ == "__main__":
     tm = ThreadManager()
-    handler = AudioManager(tm)
+    handler = AudioManager(
+        tm,
+        frame_size=960,
+        format=pyaudio.paInt16,
+        channels=1,
+        sample_rate=16000,
+        in_device_index=4,
+        out_device_index=0,
+    )
 
     print(
         (
@@ -497,6 +629,8 @@ if __name__ == "__main__":
             "5. Encrypt an audio file\n"
             "6. Decrypt an audio file\n"
             "7. Decrypt an audio stream\n"
+            "8. Record & encode audio\n"
+            "9. Play encoded audio"
         )
     )
 
@@ -534,6 +668,10 @@ if __name__ == "__main__":
                 print("Not available yet.")
             else:
                 print("Invalid choice.")
+        elif choice == "8":
+            handler.record_encoded_audio()
+        elif choice == "9":
+            handler.play_encoded_audio()
         else:
             print("Invalid choice.")
     finally:
