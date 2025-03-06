@@ -20,6 +20,7 @@ from src.managers.crypto_manager import CryptoManager
 from src.utils.utils import *
 from src.logging.logger import *
 from src.managers.thread_manager import ThreadManager
+from src.utils.constants import *
 
 # Path and file names for the file types.
 PATH = "./audio_files/"
@@ -77,7 +78,11 @@ class AudioManager:
         Initialize the AudioManager instance and configure default audio settings.
         """
         # Set up logging
-        self.logger = Logger("AudioManager", console_level=logging.DEBUG)
+        self.logger: logging = Logger(
+            "AudioManager",
+            console_level=logging.INFO,
+            console_logging=EN_CONSOLE_LOGGING,
+        )
 
         self.CHUNK = frame_size  # Affects latency for monitoring
         self.FORMAT = format
@@ -115,16 +120,7 @@ class AudioManager:
             device_info = self.audio.get_device_info_by_index(i)
             self.logger.info(f"Index {i}: {device_info['name']}")
 
-    def _open_streams(self):
-        """
-        Open the audio input and output streams.
-        """
-        # Configure and open the input stream
-        self._open_input_stream()
-        # Configure and open the output stream
-        self._open_output_stream()
-
-    def _open_input_stream(self):
+    def open_input_stream(self):
         """
         Open the audio input stream.
         """
@@ -142,7 +138,7 @@ class AudioManager:
                 f"Encountered exception with input stream: {e}"
             )
 
-    def _open_output_stream(self):
+    def open_output_stream(self):
         """
         Open the audio output stream.
         """
@@ -160,18 +156,41 @@ class AudioManager:
                 f"Encountered exception with output stream: {e}"
             )
 
-    def _close_streams(self):
+    def open_streams(self):
         """
-        Close the audio input and output streams.
+        Open the audio input and output streams.
+        """
+        # Configure and open the input stream
+        self.open_input_stream()
+        # Configure and open the output stream
+        self.open_output_stream()
+
+    def close_input_stream(self):
+        """
+        Close the audio input stream.
         """
         # Close input stream if it is open
         if self.input_stream:
             self.input_stream.stop_stream()
             self.input_stream.close()
+            self.input_stream = None
+
+    def close_output_stream(self):
+        """
+        Close the audio output streams.
+        """
         # Close output stream if it is open
         if self.output_stream:
             self.output_stream.stop_stream()
             self.output_stream.close()
+            self.output_stream = None
+
+    def close_streams(self):
+        """
+        Close the audio input and output streams.
+        """
+        self.close_input_stream()
+        self.close_output_stream()
 
     def write_output(self, data):
         # Convert to NumPy array
@@ -205,7 +224,7 @@ class AudioManager:
                 self.logger.warning("Can not open streams if no audio device.")
                 return
             else:
-                self._open_streams()
+                self.open_streams()
 
             # Monitor the audio
             while not stop_event.is_set():
@@ -228,7 +247,7 @@ class AudioManager:
         except KeyboardInterrupt:
             self.logger.info("\nMonitoring stopped.\n")
         finally:
-            self._close_streams()
+            self.close_streams()
             self.logger.info("Monitoring stopped.")
 
     def record_audio(self, output_file=AUDIO_FILE, monitoring=False):
@@ -255,7 +274,7 @@ class AudioManager:
 
         try:
             self.logger.debug("Recording... Press Ctrl+C to stop.")
-            self._open_streams()
+            self.open_streams()
             frames = []  # List to store recorded frames
             try:
                 while True:
@@ -279,7 +298,7 @@ class AudioManager:
         except Exception as e:
             self.logger.error(f"An error occurred: {e}")
         finally:
-            self._close_streams()
+            self.close_streams()
 
     def record_encrypted_audio(
         self, output_file=ENCRYPTED_AUDIO_STREAM_FILE, monitoring=False
@@ -307,7 +326,7 @@ class AudioManager:
 
         try:
             self.logger.debug("Recording... Press Ctrl+C to stop.")
-            self._open_streams()
+            self.open_streams()
             frames = []
             try:
                 while True:
@@ -333,7 +352,7 @@ class AudioManager:
         except Exception as e:
             self.logger.error(f"An error occurred: {e}")
         finally:
-            self._close_streams()
+            self.close_streams()
 
     def encrypt_file(
         self, input_file=AUDIO_FILE, output_file=ENCRYPTED_AUDIO_FILE
@@ -534,7 +553,7 @@ class AudioManager:
             self.RATE, self.CHANNELS, application=opuslib.APPLICATION_AUDIO
         )
 
-        self._open_input_stream()
+        self.open_input_stream()
 
         # Open file to write encoded audio
         with open(output_file, "wb") as file:
@@ -571,7 +590,7 @@ class AudioManager:
         # Construct the full path for the output file
         input_file = os.path.join(output_dir, "recorded_audio.opus")
 
-        self._open_output_stream()
+        self.open_output_stream()
 
         # Open file to read encoded audio
         with open(input_file, "rb") as file:

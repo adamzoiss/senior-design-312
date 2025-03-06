@@ -8,7 +8,7 @@ Description: Interfaces with the SSD1306 OLED display.
 import fcntl
 import os
 from PIL import Image, ImageDraw, ImageFont
-from src.utils.interface_constants import *
+from src.utils.constants import *
 from src.managers.thread_manager import ThreadManager
 
 

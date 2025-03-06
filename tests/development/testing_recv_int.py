@@ -14,7 +14,7 @@ import pyaudio
 from src.handlers.peripheral_drivers.rfm69 import *
 from src.managers.audio_manager import *
 from src.managers.thread_manager import *
-from src.utils.interface_constants import *
+from src.utils.constants import *
 import lgpio
 import os
 

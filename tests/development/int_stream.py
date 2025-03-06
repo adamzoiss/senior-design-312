@@ -14,7 +14,7 @@ import pyaudio
 from src.handlers.peripheral_drivers.rfm69 import *
 from src.managers.audio_manager import *
 from src.managers.thread_manager import *
-from src.utils.interface_constants import *
+from src.utils.constants import *
 import lgpio
 import numpy as np
 
@@ -43,7 +43,7 @@ am = AudioManager(
     in_device_index=3,
     out_device_index=0,
 )
-am._open_output_stream()
+am.open_output_stream()
 
 am.volume = 50
 

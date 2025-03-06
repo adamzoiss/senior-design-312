@@ -144,6 +144,13 @@ class InterfaceManager(GPIOHandler):
         timestamp : int
             The timestamp of the event.
         """
+        self.logger.debug(
+            (
+                f"Chip{chip} | GPIO{gpio} | level: {level} | "
+                f"Position: {self.position}"
+            )
+        )
+
         # If in debug mode, do not allow encoder to change volume
         if isinstance(self.nav.CURRENT_SCREEN, Debug):
             return
@@ -165,12 +172,6 @@ class InterfaceManager(GPIOHandler):
                 if self.volume < 100:
                     self.volume += 5
                 ##############################################################
-        self.logger.debug(
-            (
-                f"Chip{chip} | GPIO{gpio} | level: {level} | "
-                f"Position: {self.position}"
-            )
-        )
 
         # Update last states for the encoders
         self.last_state_a = level
@@ -303,9 +304,12 @@ class InterfaceManager(GPIOHandler):
 
 
 if __name__ == "__main__":
+    import signal
+
     try:
         thread_manager = ThreadManager()
         interface = InterfaceManager(thread_manager)
+
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
