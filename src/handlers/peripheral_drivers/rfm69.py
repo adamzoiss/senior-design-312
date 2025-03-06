@@ -256,6 +256,7 @@ class RFM69:
         encryption_key: Optional[bytes] = None,
         high_power: bool = True,
         baudrate: int = 2000000,
+        handle,
     ) -> None:
         self._tx_power = 13
         self.high_power = high_power
@@ -269,7 +270,7 @@ class RFM69:
         self._device.mode = 0
 
         # Setup reset as a digital output that's low.
-        self.handle = lgpio.gpiochip_open(0)
+        self.handle = handle
         lgpio.gpio_claim_output(self.handle, reset_pin, lgpio.LOW)
         # Setup reset as a digital output that's low.
         self._reset = reset_pin

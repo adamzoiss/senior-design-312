@@ -5,8 +5,8 @@ import time
 class ThreadManager:
     def __init__(self):
         """Initializes the thread manager."""
-        self.threads = {}
-        self.stop_events = {}
+        self.threads: dict[str, threading.Thread] = {}
+        self.stop_events: dict[str, threading.Event] = {}
 
     def start_thread(self, name, target, args=()):
         """

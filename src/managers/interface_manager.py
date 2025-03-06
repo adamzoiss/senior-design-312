@@ -12,6 +12,7 @@ from handlers.gpio_handler import *
 from src.managers.audio_manager import *
 from src.logging.logger import *
 from src.managers.thread_manager import ThreadManager
+from src.managers.rf_manager import *
 
 
 class InterfaceManager(GPIOHandler):
@@ -79,8 +80,22 @@ class InterfaceManager(GPIOHandler):
         self.last_state_b = 0
         ##################################################
         # Integrate audio
+        FORMAT = pyaudio.paInt16
+        CHANNELS = 1
+        RATE = 16000
+        FRAME_SIZE = 960  # 20ms Opus frame at 48kHz
+        PACKET_SIZE = 60  # Radio transceiver limit
+        BUFFER_TIMEOUT = 2  # Max seconds to wait for a missing packet
         try:
-            self.audio_man = AudioManager(thread_manager)
+            self.audio_man = AudioManager(
+                self.thread_manager,
+                frame_size=FRAME_SIZE,
+                format=FORMAT,
+                channels=1,
+                sample_rate=RATE,
+                in_device_index=3,
+                out_device_index=0,
+            )
         except Exception as e:
             self.logger.critical(
                 f"Exception when initialing audio manager: {e}"
@@ -96,6 +111,14 @@ class InterfaceManager(GPIOHandler):
             self.nav.display.refresh_display()
         except Exception as e:
             self.logger.critical(f"Exception when initialing display: {e}")
+        ##################################################
+        # Set up Transmitter
+        try:
+            self.transmitter = RFManager(
+                self.handle, self.thread_manager, self.audio_man
+            )
+        except Exception as e:
+            self.logger.critical(f"Exception when initialing transmitter: {e}")
         ##################################################
         # State that the manager initialized
         self.logger.info("InterfaceManager initialized")
@@ -244,10 +267,11 @@ class InterfaceManager(GPIOHandler):
                 match level:
                     case 0:  # Button pressed
                         self.thread_manager.start_thread(
-                            "Audio Monitor", self.audio_man.monitor_audio
+                            TRANSMIT_THREAD,
+                            self.transmitter.handle_input_stream,
                         )
                     case 1:  # Button released
-                        self.thread_manager.stop_thread("Audio Monitor")
+                        self.thread_manager.stop_thread(TRANSMIT_THREAD)
                     case _:  # Default case
                         self.logger.error("Error GPIO level is not 0 or 1")
             except Exception as e:

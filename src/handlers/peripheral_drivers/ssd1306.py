@@ -35,9 +35,9 @@ class SSD1306:
     def __init__(
         self,
         thread_manager: ThreadManager,
-        i2c_bus: int = 1,
-        width: int = 128,
-        height: int = 64,
+        i2c_bus=I2C_BUS,
+        width=PIXEL_WIDTH,
+        height=PIXEL_HEIGHT,
     ):
         """
         Initializes the SSD1306 display with the given I2C bus, width, and height.
@@ -175,8 +175,6 @@ class SSD1306:
         self.write_command(0x00)  # Page Start
         self.write_command(0x07)  # Page End
 
-        # for _ in range(128 * (64 // 8)):  # 128 * 8
-        #     self.write_data(bytes([0x00]))  # Clear all pixels
         for _ in range(self.pages):
             self.write_data(bytes([0x00] * self.width))
 

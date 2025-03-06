@@ -6,6 +6,7 @@ Description: Handles interfacing with the display and navigation options.
 """
 
 from src.handlers.display.screens import *
+from src.managers.thread_manager import ThreadManager
 
 
 class DisplayHandler(Menu, Mode):
@@ -108,7 +109,8 @@ class DisplayHandler(Menu, Mode):
 
 if __name__ == "__main__":
     # Example Usage
-    display = SSD1306()
+    tm = ThreadManager()
+    display = SSD1306(tm)
     navigation = DisplayHandler(display)
     navigation.display.clear_screen()
     #####################################

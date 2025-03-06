@@ -16,23 +16,14 @@ from src.managers.audio_manager import *
 from src.managers.thread_manager import *
 from src.utils.interface_constants import *
 import lgpio
-import os
-
-import scipy.signal as signal
 import numpy as np
 
-# Generate the Start Signal Packet
-# 30 repetitions of 0x55, 0xAA (2 bytes each)
-start_signal = bytes([0x55, 0xAA] * 30)
-
-# Generate the Stop Signal Packet
-# 30 repetitions of 0xAA, 0x55 (2 bytes each)
-stop_signal = bytes([0xAA, 0x55] * 30)
+# 2-byte start sequence (can be any unique marker)
+START_SEQUENCE = b"\xA5\x5A"
 
 # global frame_buffer
 global frame_buffer, last_packet_time
 frame_buffer = b""
-
 
 # Audio settings
 FORMAT = pyaudio.paInt16
@@ -54,7 +45,7 @@ am = AudioManager(
 )
 am._open_output_stream()
 
-am.volume = 100
+am.volume = 50
 
 # Queue to store received packets
 packet_queue = queue.Queue()
@@ -64,38 +55,13 @@ handle = lgpio.gpiochip_open(0)
 # Initialize Opus decoder
 decoder = opuslib.Decoder(RATE, CHANNELS)
 
-# # Clear the received audio file at the start of the program
-# with open("received_audio.wav", "wb") as f:
-#     pass
-
-
-# def save_packet_to_file(packet, filename="received_audio.wav"):
-#     with open(filename, "ab") as f:
-#         f.write(packet)
-
 
 def _callback(chip, gpio, level, timestamp):
     if rfm69.payload_ready:
         packet = rfm69.receive(timeout=None)
         if packet is not None:
-            if packet == start_signal:
-                # Empty the packet queue
-                print("received start signal")
-                while not packet_queue.empty():
-                    packet_queue.get()
-                # Empty the frame buffer
-                frame_buffer = b""
-            elif packet == stop_signal:
-                print("received stop signal")
-                # Empty the packet queue
-                # while not packet_queue.empty():
-                #     packet_queue.get()
-                # # Empty the frame buffer
-                # frame_buffer = b""
-            else:
-                print(packet)
-                packet_queue.put(packet)
-                # save_packet_to_file(packet)
+            packet_queue.put(packet)
+            # print(packet.hex())
 
 
 # Define radio parameters.
@@ -132,52 +98,53 @@ print("Waiting for packets...")
 
 last_packet_time = time.time()
 
+opus_frame = b""
+
 try:
     while True:
         try:
             # Get next packet, wait up to BUFFER_TIMEOUT seconds
             packet = packet_queue.get(timeout=BUFFER_TIMEOUT)
             last_packet_time = time.time()  # Update last packet timestamp
-            frame_buffer += packet  # Collect incoming packets
 
-            # Process frames
-            while len(frame_buffer) >= 2:
-                frame_size = struct.unpack_from("H", frame_buffer, 0)[
-                    0
-                ]  # Read stored frame size
+            if packet[0:2] == START_SEQUENCE:
+                # print("-" * 40)
+                # print(packet.hex())
+                pkt_buffer = b""
+                frame_len = int.from_bytes(packet[2:4], "big")
+                # print(frame_len)
 
-                # Ensure we have the full frame before processing
-                if len(frame_buffer) < 2 + frame_size:
-                    break  # Wait for more data
+                # print(f"pkt len: {int.from_bytes(frame_len, byteorder='big')}")
+                pkt_buffer = packet[4:]
+                opus_frame = None
+            else:
+                pkt_buffer = pkt_buffer + packet
+                if len(pkt_buffer) > frame_len:
+                    pkt_buffer = pkt_buffer[:frame_len]
+                    opus_frame = pkt_buffer
 
-                # Extract full Opus frame
-                opus_frame = frame_buffer[2 : 2 + frame_size]
-                # print(f"len: {len(opus_frame)}")
-                frame_buffer = frame_buffer[
-                    2 + frame_size :
-                ]  # Remove processed data
-
+            if opus_frame:
                 # Decode and play audio
                 try:
-                    decoded_audio = decoder.decode(opus_frame, FRAME_SIZE)
+                    decoded_audio = decoder.decode(
+                        bytes(opus_frame), FRAME_SIZE
+                    )
                     am.write_output(decoded_audio)
                 except opuslib.exceptions.OpusError as e:
                     print(f"Opus decoding error: {e} | len: {len(opus_frame)}")
-                    if frame_buffer:
-                        frame_buffer = b""
 
         except queue.Empty:
             # Timeout reached, check for lost packets
-            if time.time() - last_packet_time > BUFFER_TIMEOUT:
-                print("No data.")
-                if frame_buffer:
-                    frame_buffer = b""
-                # silent_audio = b"\x00" * (
-                #     FRAME_SIZE * 2
-                # )  # Insert silence to maintain sync
-                # am.output_stream.write(silent_audio)
-                last_packet_time = time.time()
-            # pass
+            # if time.time() - last_packet_time > BUFFER_TIMEOUT:
+            #     print("No data.")
+            #     if frame_buffer:
+            #         frame_buffer = b""
+            #     # silent_audio = b"\x00" * (
+            #     #     FRAME_SIZE * 2
+            #     # )  # Insert silence to maintain sync
+            #     # am.output_stream.write(silent_audio)
+            #     last_packet_time = time.time()
+            pass
         # the sleep time is arbitrary since any incomming packe will trigger an interrupt
         # and be received.
         # time.sleep(0.1)

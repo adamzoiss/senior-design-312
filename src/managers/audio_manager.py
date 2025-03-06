@@ -97,6 +97,14 @@ class AudioManager:
         self.volume = 50  # Volume in %
         self.thread_manager = thread_manager
 
+        # Create Opus encoder
+        self.encoder = opuslib.Encoder(
+            self.RATE, self.CHANNELS, application=opuslib.APPLICATION_AUDIO
+        )
+
+        # Decode Opus audio
+        self.decoder = opuslib.Decoder(self.RATE, self.CHANNELS)
+
         self.logger.info("AudioManager initialized.")
 
     def find_devices(self):
@@ -165,24 +173,18 @@ class AudioManager:
             self.output_stream.stop_stream()
             self.output_stream.close()
 
-    def write_packet_to_output_stream(self, packet_data):
-        """
-        Write packet data to the output stream.
-
-        Parameters
-        ----------
-        packet_data : bytes
-            The packet data to be written to the output stream.
-        """
+    def write_output(self, data):
+        # Convert to NumPy array
+        audio_data = np.frombuffer(data, dtype=np.int16)
+        # Apply volume scaling
+        volume_scalar = (self.volume / 100) * 10
+        audio_data = (audio_data * volume_scalar).astype(np.int16)
+        # Convert back to bytes
+        data = audio_data.tobytes()
         try:
-            if self.output_stream:
-                self.output_stream.write(bytes(packet_data))
-            else:
-                self.logger.warning("Output stream is not open.")
+            self.output_stream.write(data)
         except Exception as e:
-            self.logger.error(
-                f"An error occurred while writing to output stream: {e}"
-            )
+            print(f"Exception: [{e}]")
 
     def monitor_audio(self, stop_event: threading.Event):
         """
@@ -615,8 +617,8 @@ if __name__ == "__main__":
         frame_size=960,
         format=pyaudio.paInt16,
         channels=1,
-        sample_rate=16000,
-        in_device_index=4,
+        sample_rate=48000,
+        in_device_index=3,
         out_device_index=0,
     )
 

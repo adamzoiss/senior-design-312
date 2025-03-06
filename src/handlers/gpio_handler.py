@@ -97,6 +97,8 @@ class GPIOHandler:
         lgpio.gpio_claim_alert(self.handle, SW_3, lgpio.BOTH_EDGES)
         lgpio.gpio_claim_alert(self.handle, SW_4, lgpio.RISING_EDGE)
         lgpio.gpio_claim_alert(self.handle, SW_5, lgpio.RISING_EDGE)
+        # Alert for incoming packet
+        lgpio.gpio_claim_alert(self.handle, G0, lgpio.RISING_EDGE)
 
     def _encoder_callback(self, chip, gpio, level, timestamp):
         print(
@@ -109,6 +111,16 @@ class GPIOHandler:
         )
 
     def _switch_callback(self, chip, gpio, level, timestamp):
+        print(
+            (
+                f"Chip: {chip} | "
+                f"GPIO{gpio} | "
+                f"Level: {level} | "
+                f"Timestamp: {timestamp}"
+            )
+        )
+
+    def _pkt_callback(self, chip, gpio, level, timestamp):
         print(
             (
                 f"Chip: {chip} | "
@@ -147,6 +159,10 @@ class GPIOHandler:
         self.sw5_cb = lgpio.callback(
             self.handle, SW_5, lgpio.RISING_EDGE, self._switch_callback
         )
+        # Packet callback
+        self.pkt_cb = lgpio.callback(
+            self.handle, G0, lgpio.RISING_EDGE, self._pkt_callback
+        )
 
     def _cancel_callbacks(self):
         """
@@ -161,6 +177,7 @@ class GPIOHandler:
         self.sw3_cb.cancel()
         self.sw4_cb.cancel()
         self.sw5_cb.cancel()
+        self.pkt_cb.cancel()
 
 
 if __name__ == "__main__":
