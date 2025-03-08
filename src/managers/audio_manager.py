@@ -16,11 +16,7 @@ import os
 import threading
 import struct
 
-from src.managers.crypto_manager import CryptoManager
-from src.utils.utils import *
-from src.logging.logger import *
-from src.managers.thread_manager import ThreadManager
-from src.utils.constants import *
+from src.managers.base_audio_manager import *
 
 # Path and file names for the file types.
 PATH = "./audio_files/"
@@ -31,7 +27,7 @@ DECRYPTED_AUDIO_FILE = PATH + "decrypted_audio.wav"
 DECRYPTED_AUDIO_STREAM_FILE = PATH + "decrypted_audio_stream.wav"
 
 
-class AudioManager:
+class AudioManager(BaseAudioManager):
     """
     Driver that handles the audio input and output.
     The user must specify the index of the USB mic and headphones.
@@ -67,16 +63,28 @@ class AudioManager:
     def __init__(
         self,
         thread_manager: ThreadManager,
-        frame_size=40,
-        format=pyaudio.paInt16,
-        channels=1,
-        sample_rate=16000,
-        in_device_index=4,
-        out_device_index=0,
+        frame_size=FRAME_SIZE,
+        format=FORMAT,
+        channels=CHANNELS,
+        sample_rate=RATE,
+        in_device_index=INPUT_DEV_INDEX,
+        out_device_index=OUTPUT_DEV_INDEX,
     ):
         """
         Initialize the AudioManager instance and configure default audio settings.
         """
+
+        # Call the BaseAudioManager init
+        super().__init__(
+            thread_manager,
+            frame_size,
+            format,
+            channels,
+            sample_rate,
+            in_device_index,
+            out_device_index,
+        )
+
         # Set up logging
         self.logger: logging = Logger(
             "AudioManager",
@@ -84,167 +92,7 @@ class AudioManager:
             console_logging=EN_CONSOLE_LOGGING,
         )
 
-        self.CHUNK = frame_size  # Affects latency for monitoring
-        self.FORMAT = format
-        self.CHANNELS = channels
-        self.RATE = sample_rate
-
-        self.audio = pyaudio.PyAudio()
-        self.input_device_index = in_device_index  #! THIS VALUE CAN CHANGE
-        self.output_device_index = out_device_index  #! THIS VALUE CAN CHANGE
-
-        self.input_stream = None
-        self.output_stream = None
-
-        # Initialize the encryptor
-        self.encryptor = CryptoManager()
-
-        self.volume = 100  # Volume in %
-        self.thread_manager = thread_manager
-
-        # Create Opus encoder
-        self.encoder = opuslib.Encoder(
-            self.RATE, self.CHANNELS, application=opuslib.APPLICATION_AUDIO
-        )
-
-        # Decode Opus audio
-        self.decoder = opuslib.Decoder(self.RATE, self.CHANNELS)
-
         self.logger.info("AudioManager initialized.")
-
-    def find_devices(self):
-        """
-        Display all available audio input and output devices.
-        """
-        for i in range(self.audio.get_device_count()):
-            device_info = self.audio.get_device_info_by_index(i)
-            self.logger.info(f"Index {i}: {device_info['name']}")
-
-    def open_input_stream(self):
-        """
-        Open the audio input stream.
-        """
-        try:
-            self.input_stream = self.audio.open(
-                format=self.FORMAT,
-                channels=self.CHANNELS,
-                rate=self.RATE,
-                input=True,
-                input_device_index=self.input_device_index,
-                frames_per_buffer=self.CHUNK,
-            )
-        except Exception as e:
-            self.logger.warning(
-                f"Encountered exception with input stream: {e}"
-            )
-
-    def open_output_stream(self):
-        """
-        Open the audio output stream.
-        """
-        try:
-            self.output_stream = self.audio.open(
-                format=self.FORMAT,
-                channels=self.CHANNELS,
-                rate=self.RATE,
-                output=True,
-                output_device_index=self.output_device_index,
-                frames_per_buffer=self.CHUNK,
-            )
-        except Exception as e:
-            self.logger.warning(
-                f"Encountered exception with output stream: {e}"
-            )
-
-    def open_streams(self):
-        """
-        Open the audio input and output streams.
-        """
-        # Configure and open the input stream
-        self.open_input_stream()
-        # Configure and open the output stream
-        self.open_output_stream()
-
-    def close_input_stream(self):
-        """
-        Close the audio input stream.
-        """
-        # Close input stream if it is open
-        if self.input_stream:
-            self.input_stream.stop_stream()
-            self.input_stream.close()
-            self.input_stream = None
-
-    def close_output_stream(self):
-        """
-        Close the audio output streams.
-        """
-        # Close output stream if it is open
-        if self.output_stream:
-            self.output_stream.stop_stream()
-            self.output_stream.close()
-            self.output_stream = None
-
-    def close_streams(self):
-        """
-        Close the audio input and output streams.
-        """
-        self.close_input_stream()
-        self.close_output_stream()
-
-    # def write_output(self, data):
-    #     # Convert to NumPy array
-    #     audio_data = np.frombuffer(data, dtype=np.int16)
-    #     # Apply volume scaling
-    #     volume_scalar = self.volume / 100
-    #     audio_data = (audio_data * volume_scalar).astype(np.int16)
-    #     # Convert back to bytes
-    #     data = audio_data.tobytes()
-    #     try:
-    #         self.output_stream.write(data)
-    #     except Exception as e:
-    #         print(f"Exception: [{e}]")
-
-    def write_output(
-        self,
-        data,
-        bass_gain=0.5,
-        mid_gain=0.7,
-        treble_gain=0.8,
-        threshold=10000,
-        ratio=4,
-    ):
-        audio_data = np.frombuffer(data, dtype=np.int16).astype(np.float32)
-        # FFT-based Equalizer
-        fft_audio = np.fft.rfft(audio_data)
-        freqs = np.fft.rfftfreq(len(audio_data), d=1 / self.RATE)
-        # Frequency bands (adjustable)
-        bass_band = freqs < 200  # Below 200 Hz
-        mid_band = (freqs >= 200) & (freqs < 2000)  # 200 - 2000 Hz
-        treble_band = freqs >= 2000  # Above 2000 Hz
-        # Apply gains
-        fft_audio[bass_band] *= bass_gain
-        fft_audio[mid_band] *= mid_gain
-        fft_audio[treble_band] *= treble_gain
-        # Inverse FFT to time domain
-        eq_audio = np.fft.irfft(fft_audio)
-        # Dynamic range compression
-        abs_audio = np.abs(eq_audio)
-        over_threshold = abs_audio > threshold
-        compressed_audio = np.copy(eq_audio)
-        compressed_audio[over_threshold] = np.sign(
-            eq_audio[over_threshold]
-        ) * (threshold + (abs_audio[over_threshold] - threshold) / ratio)
-        # Volume adjustment
-        makeup_gain = self.volume / 100
-        compressed_audio *= makeup_gain
-        # Prevent clipping
-        np.clip(compressed_audio, -32768, 32767, out=compressed_audio)
-        output_audio = compressed_audio.astype(np.int16)
-        try:
-            self.output_stream.write(output_audio.tobytes())
-        except Exception as e:
-            print(f"Exception: [{e}]")
 
     def monitor_audio(self, stop_event: threading.Event):
         """
@@ -559,15 +407,6 @@ class AudioManager:
         except Exception as e:
             self.logger.error(f"An error occurred during decryption: {e}")
 
-    def terminate(self):
-        """
-        Terminate the PyAudio instance.
-
-        This method releases all resources allocated by PyAudio to ensure proper cleanup.
-        """
-        # Terminate the PyAudio session
-        self.audio.terminate()
-
     def record_encoded_audio(self):
         """
         Record audio from the microphone, encode it using the Opus codec, and save it to a file.
@@ -589,11 +428,7 @@ class AudioManager:
         # Ensure that the path exists, and if doesn't is created.
         ensure_path(str(output_dir))
 
-        # Create Opus encoder
-        encoder = opuslib.Encoder(
-            self.RATE, self.CHANNELS, application=opuslib.APPLICATION_AUDIO
-        )
-
+        # Open the input stream
         self.open_input_stream()
 
         # Open file to write encoded audio
@@ -604,7 +439,7 @@ class AudioManager:
                     data = self.input_stream.read(
                         self.CHUNK, exception_on_overflow=False
                     )
-                    encoded = encoder.encode(data, self.CHUNK)
+                    encoded = self.encoder.encode(data, self.CHUNK)
 
                     # Write the length of the encoded frame first (to aid decoding)
                     file.write(
@@ -638,7 +473,6 @@ class AudioManager:
             encoded_data = file.read()
 
         # Decode Opus audio
-        decoder = opuslib.Decoder(self.RATE, self.CHANNELS)
         decoded_frames = []
         offset = 0
 
@@ -653,7 +487,7 @@ class AudioManager:
                 offset += frame_size  # Move past the actual frame data
 
                 # Decode the frame
-                decoded = decoder.decode(chunk, self.CHUNK)
+                decoded = self.decoder.decode(chunk, self.CHUNK)
                 decoded_frames.append(decoded)
             except (opuslib.exceptions.OpusError, struct.error) as e:
                 print(f"Opus decoding error: {e}")
@@ -677,9 +511,9 @@ if __name__ == "__main__":
         frame_size=960,
         format=pyaudio.paInt16,
         channels=1,
-        sample_rate=48000,
-        in_device_index=3,
-        out_device_index=0,
+        sample_rate=16000,
+        in_device_index=1,
+        out_device_index=2,
     )
 
     print(
@@ -696,7 +530,7 @@ if __name__ == "__main__":
         )
     )
 
-    choice = input("Choose an option (1/2/3/4/5/6/7): ").strip()
+    choice = input("Choose an option (1/2/3/4/5/6/7/8/9/): ").strip()
 
     try:
         if choice == "1":

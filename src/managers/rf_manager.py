@@ -2,7 +2,7 @@ import queue
 from math import ceil
 
 from src.managers.thread_manager import *
-from src.managers.audio_manager import *
+from src.managers.base_audio_manager import *
 from src.handlers.peripheral_drivers.rfm69 import *
 from src.utils.constants import *
 from src.logging import *
@@ -26,7 +26,7 @@ class RFManager:
         self,
         handle,
         thread_manager: ThreadManager,
-        audio_manager: AudioManager,
+        audio_manager: BaseAudioManager,
     ):
         # Set up logging
         self.logger: logging = Logger(
@@ -90,7 +90,7 @@ class RFManager:
             if self.thread_manager.is_running(RECEIVE_THREAD):
                 self.thread_manager.stop_thread(RECEIVE_THREAD)
             return
-        # Check if there is an incomming packet and start the listening
+        # Check if there is an incoming packet and start the listening
         # thread if so.
         if self.rfm69.payload_ready:
             # Start the thread to handle playing packet data
@@ -212,7 +212,7 @@ if __name__ == "__main__":
 
     handle = lgpio.gpiochip_open(0)
     tm = ThreadManager()
-    am = AudioManager(tm)
+    am = BaseAudioManager(tm)
 
     transceiver = RFManager(handle, tm, am)
 

@@ -81,5 +81,5 @@ CHANNELS = 1
 RATE = 48000
 FRAME_SIZE = 960  # 20ms Opus frame at 48kHz
 # Input and output device indicies.
-INPUT_DEV_INDEX = 3
-OUTPUT_DEV_INDEX = 0
+INPUT_DEV_INDEX = 1
+OUTPUT_DEV_INDEX = 2
