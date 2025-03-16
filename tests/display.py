@@ -18,7 +18,7 @@ def write_command(cmd):
     os.write(i2c_dev, bytes([0x00, cmd]))
 
 
-def write_data(data):
+def write_data(data: int):
     """Send data bytes to the SSD1306 display."""
     os.write(i2c_dev, bytes([0x40]) + data)
 
