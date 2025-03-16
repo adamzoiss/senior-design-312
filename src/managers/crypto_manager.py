@@ -126,7 +126,7 @@ class CryptoManager:
             self.logger.error(f"Exception thrown: {e}\nExiting program...")
             sys.exit()
 
-    def encrypt(self, data):
+    def encrypt(self, data: int):
         """
         Encrypt the given audio data.
 
@@ -143,7 +143,7 @@ class CryptoManager:
         encryptor = self.cipher.encryptor()
         return encryptor.update(data) + encryptor.finalize()
 
-    def decrypt(self, data):
+    def decrypt(self, data: int):
         """
         Decrypt the given encrypted audio data.
 
