@@ -72,7 +72,7 @@ class InterfaceManager(GPIOHandler):
         )
         ##################################################
         # Variable for volume
-        self.volume = 50
+        self.volume = 100
         # Position variable for menu navigation
         self.position = -1
         # Last state values for the encoders
@@ -80,12 +80,12 @@ class InterfaceManager(GPIOHandler):
         self.last_state_b = 0
         ##################################################
         # Integrate audio
-        FORMAT = pyaudio.paInt16
-        CHANNELS = 1
+        # FORMAT = pyaudio.paInt16
+        # CHANNELS = 1
         RATE = 16000
-        FRAME_SIZE = 960  # 20ms Opus frame at 48kHz
-        PACKET_SIZE = 60  # Radio transceiver limit
-        BUFFER_TIMEOUT = 2  # Max seconds to wait for a missing packet
+        # FRAME_SIZE = 960  # 20ms Opus frame at 48kHz
+        # PACKET_SIZE = 60  # Radio transceiver limit in bytes
+        # BUFFER_TIMEOUT = 2  # Max seconds to wait for a missing packet
         try:
             self.audio_man = AudioManager(
                 self.thread_manager,

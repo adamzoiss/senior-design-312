@@ -99,7 +99,7 @@ class AudioManager:
         # Initialize the encryptor
         self.encryptor = CryptoManager()
 
-        self.volume = 50  # Volume in %
+        self.volume = 100  # Volume in %
         self.thread_manager = thread_manager
 
         # Create Opus encoder
@@ -192,16 +192,57 @@ class AudioManager:
         self.close_input_stream()
         self.close_output_stream()
 
-    def write_output(self, data):
-        # Convert to NumPy array
-        audio_data = np.frombuffer(data, dtype=np.int16)
-        # Apply volume scaling
-        volume_scalar = (self.volume / 100) * 10
-        audio_data = (audio_data * volume_scalar).astype(np.int16)
-        # Convert back to bytes
-        data = audio_data.tobytes()
+    # def write_output(self, data):
+    #     # Convert to NumPy array
+    #     audio_data = np.frombuffer(data, dtype=np.int16)
+    #     # Apply volume scaling
+    #     volume_scalar = self.volume / 100
+    #     audio_data = (audio_data * volume_scalar).astype(np.int16)
+    #     # Convert back to bytes
+    #     data = audio_data.tobytes()
+    #     try:
+    #         self.output_stream.write(data)
+    #     except Exception as e:
+    #         print(f"Exception: [{e}]")
+
+    def write_output(
+        self,
+        data,
+        bass_gain=0.5,
+        mid_gain=0.7,
+        treble_gain=0.8,
+        threshold=10000,
+        ratio=4,
+    ):
+        audio_data = np.frombuffer(data, dtype=np.int16).astype(np.float32)
+        # FFT-based Equalizer
+        fft_audio = np.fft.rfft(audio_data)
+        freqs = np.fft.rfftfreq(len(audio_data), d=1 / self.RATE)
+        # Frequency bands (adjustable)
+        bass_band = freqs < 200  # Below 200 Hz
+        mid_band = (freqs >= 200) & (freqs < 2000)  # 200 - 2000 Hz
+        treble_band = freqs >= 2000  # Above 2000 Hz
+        # Apply gains
+        fft_audio[bass_band] *= bass_gain
+        fft_audio[mid_band] *= mid_gain
+        fft_audio[treble_band] *= treble_gain
+        # Inverse FFT to time domain
+        eq_audio = np.fft.irfft(fft_audio)
+        # Dynamic range compression
+        abs_audio = np.abs(eq_audio)
+        over_threshold = abs_audio > threshold
+        compressed_audio = np.copy(eq_audio)
+        compressed_audio[over_threshold] = np.sign(
+            eq_audio[over_threshold]
+        ) * (threshold + (abs_audio[over_threshold] - threshold) / ratio)
+        # Volume adjustment
+        makeup_gain = self.volume / 100
+        compressed_audio *= makeup_gain
+        # Prevent clipping
+        np.clip(compressed_audio, -32768, 32767, out=compressed_audio)
+        output_audio = compressed_audio.astype(np.int16)
         try:
-            self.output_stream.write(data)
+            self.output_stream.write(output_audio.tobytes())
         except Exception as e:
             print(f"Exception: [{e}]")
 

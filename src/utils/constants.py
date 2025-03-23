@@ -25,10 +25,10 @@ ANO Navigation Encoder and button GPIO assignments and constants.
 
 """
 SW_1 = 24  # GPIO pin for push button 1 - pin 18
-SW_2 = 17  # GPIO pin for push button 2 - pin 11
-SW_3 = 12  # GPIO pin for push button 3 - pin 32
-SW_4 = 13  # GPIO pin for push button 4 - pin 33
-SW_5 = 22  # GPIO pin for push button 5 - pin 15
+SW_2 = 13  # GPIO pin for push button 2 - pin 33
+SW_3 = 22  # GPIO pin for push button 3 - pin 15
+SW_4 = 17  # GPIO pin for push button 4 - pin 11
+SW_5 = 12  # GPIO pin for push button 5 - pin 32
 
 ENC_A = 27  # GPIO pin for rotary encoder A - pin 13
 ENC_B = 5  # GPIO pin for rotary encoder B - pin 29

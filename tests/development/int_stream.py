@@ -19,7 +19,7 @@ import lgpio
 import numpy as np
 
 # 2-byte start sequence (can be any unique marker)
-START_SEQUENCE = b"\xA5\x5A"
+START_SEQUENCE = b"\xa5\x5a"
 
 # global frame_buffer
 global frame_buffer, last_packet_time
@@ -45,7 +45,7 @@ am = AudioManager(
 )
 am.open_output_stream()
 
-am.volume = 50
+am.volume = 100
 
 # Queue to store received packets
 packet_queue = queue.Queue()
