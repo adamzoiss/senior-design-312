@@ -1,0 +1,1 @@
+This directory will hold the logs for the device.

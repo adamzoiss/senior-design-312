@@ -81,6 +81,7 @@ echo_green "Portaudio installed."
 # Setting up the python environment
 echo_yellow "Setting up the python environment"
 cd "$HOME/git/senior-design-312"
+sudo apt install -y python3.11-dev
 penvca
 pip install -e .
 echo_green "Python environment setup complete."

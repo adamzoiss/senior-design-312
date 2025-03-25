@@ -84,7 +84,14 @@ ___
     cd setup_utils
     chmod +x setup.sh
     ./setup.sh
+    ```
 
+    After this, switch the main audio driver:
+    ```bash
+    sudo raspi-config
+    ```
+
+    - Go into the System Settings and into Audio, select the driver that is not hdmi. If no driver, plug in audio bonnet.
 
 
 ---
