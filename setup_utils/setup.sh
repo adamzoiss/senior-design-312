@@ -8,7 +8,7 @@
 ##############################################################################
 # Adding alias to the bashrc file
 LINES=(
-    'alias ptree="tree -I 'env|__pycache__|.env|*egg-info|.vscode|*.bin|*.wav'"'
+    'alias ptree="tree -I '\'env|__pycache__|.env|*egg-info|.vscode|*.bin|*.wav\''"'
     'alias penvca="python3 -m venv .env --system-site-packages && source .env/bin/activate && pip install --upgrade pip"'
     'alias penva="source .env/bin/activate"'
     'export PYTHONPATH="$HOME/git/senior-design-312"'

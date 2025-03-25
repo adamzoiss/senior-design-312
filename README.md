@@ -72,6 +72,23 @@ ___
 
 ---
 
+5. Update and upgrade the rpi to install git
+    ```bash
+    sudo apt update
+    sudo apt upgrade
+    sudo apt install -y git
+    mkdir git
+    cd git
+    git clone https://github.com/adamzoiss/senior-design-312.git
+    cd senior-design-312
+    cd setup_utils
+    chmod +x setup.sh
+    ./setup.sh
+
+
+
+---
+
 5. Once SSH connection to the rpi is made, open the config menu via:
 
     ```bash
