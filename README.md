@@ -75,7 +75,9 @@ ___
 5. Update and upgrade the rpi to install git
     ```bash
     sudo apt update
-    sudo apt upgrade
+    sudo apt -y upgrade
+    sudo reboot
+
     sudo apt install -y git
     mkdir git
     cd git
@@ -86,12 +88,6 @@ ___
     ./setup.sh
     ```
 
-    After this, switch the main audio driver:
-    ```bash
-    sudo raspi-config
-    ```
-
-    - Go into the System Settings and into Audio, select the driver that is not hdmi. If no driver, plug in audio bonnet.
 
 
 ---

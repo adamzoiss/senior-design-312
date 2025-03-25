@@ -93,8 +93,8 @@ class InterfaceManager(GPIOHandler):
                 format=FORMAT,
                 channels=1,
                 sample_rate=RATE,
-                in_device_index=3,
-                out_device_index=0,
+                in_device_index=INPUT_DEV_INDEX,
+                out_device_index=OUTPUT_DEV_INDEX,
             )
         except Exception as e:
             self.logger.critical(
