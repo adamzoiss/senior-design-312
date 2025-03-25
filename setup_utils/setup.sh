@@ -7,25 +7,30 @@
 
 ##############################################################################
 # Adding alias to the bashrc file
-LINES=(
-    'alias ptree="tree -I '\'env|__pycache__|.env|*egg-info|.vscode|*.bin|*.wav\''"'
-    'alias penvca="python3 -m venv .env --system-site-packages && source .env/bin/activate && pip install --upgrade pip"'
-    'alias penva="source .env/bin/activate"'
-    'export PYTHONPATH="$HOME/git/senior-design-312"'
-)
+#!/bin/bash
 
-# Target .bashrc file
 BASHRC="$HOME/.bashrc"
 
-# Loop through and add each line if it's not already present
+# Define all lines you want to add to .bashrc
+LINES=(
+'alias ptree="tree -I '\''env|__pycache__|.env|*egg-info|.vscode|*.bin|*.wav'\''"'
+'alias penvca="python3 -m venv .env --system-site-packages && source .env/bin/activate && pip install --upgrade pip"'
+'alias penva="source .env/bin/activate"'
+'export PYTHONPATH="$HOME/git/senior-design-312"'
+)
+
+echo "[+] Appending aliases and exports to .bashrc (if not already present)..."
+
 for LINE in "${LINES[@]}"; do
-  if ! grep -Fxq "$LINE" "$BASHRC"; then
-    echo "$LINE" >> "$BASHRC"
-    echo "Added: $LINE"
-  else
-    echo "Already exists: $LINE"
-  fi
+    if ! grep -Fxq "$LINE" "$BASHRC"; then
+        echo "$LINE" >> "$BASHRC"
+        echo "  -> Added: $LINE"
+    else
+        echo "  -> Already present: $LINE"
+    fi
 done
+
+echo "[✓] Done. You can run 'source ~/.bashrc' to use the changes now."
 
 ##############################################################################
 # Update the raspberry pi
