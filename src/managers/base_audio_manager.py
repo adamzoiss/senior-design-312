@@ -99,7 +99,7 @@ class BaseAudioManager:
         # Initialize the encryptor
         self.encryptor = CryptoManager()
 
-        self.volume = 50  # Volume in %
+        self.volume = 100  # Volume in %
         self.thread_manager = thread_manager
 
         # Create Opus encoder
@@ -109,6 +109,17 @@ class BaseAudioManager:
 
         # Decode Opus audio
         self.decoder = opuslib.Decoder(self.RATE, self.CHANNELS)
+
+        # Starting gain for normalization
+        self.current_gain = CURRENT_GAIN
+        # Audio processing parameters
+        self.set_audio_processing(
+            enable_normalization=ENABLE_NORMALIZATION,
+            enable_noise_gate=ENABLE_NOISE_GATE,
+            target_rms=TARGET_RMS,
+            noise_gate_threshold=NOISE_GATE_THRESHOLD,
+            smoothing_factor=SMOOTHING_FACTOR,
+        )
 
         self.logger.info("BaseAudioManager initialized.")
 
@@ -191,6 +202,7 @@ class BaseAudioManager:
         if self.input_stream:
             self.input_stream.stop_stream()
             self.input_stream.close()
+            del self.input_stream
             self.input_stream = None
 
     def close_output_stream(self):
@@ -201,6 +213,7 @@ class BaseAudioManager:
         if self.output_stream:
             self.output_stream.stop_stream()
             self.output_stream.close()
+            del self.output_stream
             self.output_stream = None
 
     def close_streams(self):
@@ -223,6 +236,8 @@ class BaseAudioManager:
     def write_output(self, data, volume=None):
         """
         Writes audio data to the output stream with the specified volume.
+        Applies normalization and noise gate if enabled.
+
         Parameters
         ----------
         data : bytes
@@ -238,17 +253,95 @@ class BaseAudioManager:
         # Update volume
         if volume is not None:
             self.volume = volume
+
         # Convert to NumPy array
         audio_data = np.frombuffer(data, dtype=np.int16)
-        # Apply volume scaling
-        volume_scalar = (self.volume / 100) * 10
+
+        # Apply audio processing if enabled
+        if self.enable_normalization or self.enable_noise_gate:
+            # Calculate current RMS (audio level)
+            rms = np.sqrt(np.mean(np.square(audio_data.astype(np.float32))))
+
+            # Apply noise gate if enabled
+            if self.enable_noise_gate and rms < self.noise_gate_threshold:
+                # If below threshold, attenuate audio to reduce noise
+                audio_data = np.zeros_like(audio_data)
+
+            # Apply normalization if enabled and we're above noise gate threshold
+            if self.enable_normalization and (
+                not self.enable_noise_gate or rms >= self.noise_gate_threshold
+            ):
+                if rms > 0:
+                    # Calculate target gain
+                    # Avoid division by zero
+                    target_gain = self.target_rms / (rms + 1e-10)
+
+                    # Smooth the gain adjustment to prevent abrupt volume changes
+                    self.current_gain = (
+                        self.smoothing_factor * self.current_gain
+                        + (1 - self.smoothing_factor) * target_gain
+                    )
+
+                    # Limit gain to avoid excessive amplification of quiet sounds
+                    self.current_gain = min(self.current_gain, 10.0)
+
+                    # Apply gain
+                    audio_data = (
+                        audio_data.astype(np.float32) * self.current_gain
+                    ).astype(np.int16)
+
+        # Apply manual volume control
+        volume_scalar = self.volume / 100
         audio_data = (audio_data * volume_scalar).astype(np.int16)
+
         # Convert back to bytes
         data = audio_data.tobytes()
         try:
             self.output_stream.write(data)
         except Exception as e:
-            print(f"Exception: [{e}]")
+            self.logger.error(f"Exception: [{e}]")
+
+    def set_audio_processing(
+        self,
+        enable_normalization=None,
+        enable_noise_gate=None,
+        target_rms=None,
+        noise_gate_threshold=None,
+        smoothing_factor=None,
+    ):
+        """
+        Configure audio processing parameters.
+
+        Parameters
+        ----------
+        enable_normalization : bool, optional
+            Enable or disable audio normalization.
+        enable_noise_gate : bool, optional
+            Enable or disable noise gate.
+        target_rms : int, optional
+            Target RMS value for normalization.
+        noise_gate_threshold : int, optional
+            RMS threshold below which audio is considered noise.
+        smoothing_factor : float, optional
+            Factor for smoothing normalization (0-1, higher = smoother).
+        """
+        if enable_normalization is not None:
+            self.enable_normalization = enable_normalization
+        if enable_noise_gate is not None:
+            self.enable_noise_gate = enable_noise_gate
+        if target_rms is not None:
+            self.target_rms = target_rms
+        if noise_gate_threshold is not None:
+            self.noise_gate_threshold = noise_gate_threshold
+        if smoothing_factor is not None:
+            # Clamp between 0 and 1
+            self.smoothing_factor = min(max(smoothing_factor, 0.0), 1.0)
+
+        self.logger.info(
+            f"Audio processing updated: normalization={self.enable_normalization}, "
+            f"noise_gate={self.enable_noise_gate}, target_rms={self.target_rms}, "
+            f"noise_threshold={self.noise_gate_threshold}, smoothing={self.smoothing_factor}"
+        )
 
     def encode(self, data: bytes) -> bytes:
         """

@@ -101,25 +101,9 @@ class GPIOHandler:
         # lgpio.gpio_claim_alert(self.handle, G0, lgpio.RISING_EDGE)
 
     def _encoder_callback(self, chip, gpio, level, timestamp):
-        # print(
-        #     (
-        #         f"Chip: {chip} | "
-        #         f"GPIO{gpio} | "
-        #         f"Level: {level} | "
-        #         f"Timestamp: {timestamp}"
-        #     )
-        # )
         pass
 
     def _switch_callback(self, chip, gpio, level, timestamp):
-        # print(
-        #     (
-        #         f"Chip: {chip} | "
-        #         f"GPIO{gpio} | "
-        #         f"Level: {level} | "
-        #         f"Timestamp: {timestamp}"
-        #     )
-        # )
         pass
 
     def _init_callbacks(self):

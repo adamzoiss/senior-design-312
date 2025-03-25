@@ -5,6 +5,7 @@ from src.managers.thread_manager import *
 from src.managers.base_audio_manager import *
 from src.handlers.peripheral_drivers.rfm69 import *
 from src.utils.constants import *
+from src.utils.utils import sleep_microseconds
 from src.logging import *
 
 
@@ -31,7 +32,7 @@ class RFManager:
         # Set up logging
         self.logger: logging = Logger(
             "RFManager",
-            console_level=logging.INFO,
+            console_level=logging.DEBUG,
             console_logging=EN_CONSOLE_LOGGING,
         )
 
@@ -166,7 +167,7 @@ class RFManager:
                         )
                         self.audio_manager.write_output(decoded_audio)
                     except opuslib.exceptions.OpusError as e:
-                        print(
+                        self.logger.error(
                             f"Opus decoding error: {e} | len: {len(opus_frame)}"
                         )
             except queue.Empty:
@@ -202,9 +203,14 @@ class RFManager:
                 for i in range(0, req_pkts):
                     pkt = pkt_buffer[i * PACKET_SIZE : (i + 1) * PACKET_SIZE]
                     self.rfm69.send(pkt)
-
+                    # Since the RPI 5 compute time is so fast, we need to
+                    # add a small delay to ensure the packets are received.
+                    sleep_microseconds(1400)
             except Exception as e:
-                print(e)
+                self.logger.error(f"Packet error: {e}")
+
+        # Cleaning up the input stream.
+        self.audio_manager.close_input_stream()
 
 
 if __name__ == "__main__":
