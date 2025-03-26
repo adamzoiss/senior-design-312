@@ -31,7 +31,7 @@ class RFManager:
         # Set up logging
         self.logger: logging = Logger(
             "RFManager",
-            console_level=logging.INFO,
+            console_level=logging.DEBUG,
             console_logging=EN_CONSOLE_LOGGING,
         )
 

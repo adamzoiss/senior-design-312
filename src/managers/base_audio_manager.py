@@ -241,7 +241,7 @@ class BaseAudioManager:
         # Convert to NumPy array
         audio_data = np.frombuffer(data, dtype=np.int16)
         # Apply volume scaling
-        volume_scalar = (self.volume / 100) * 10
+        volume_scalar = self.volume / 100
         audio_data = (audio_data * volume_scalar).astype(np.int16)
         # Convert back to bytes
         data = audio_data.tobytes()
