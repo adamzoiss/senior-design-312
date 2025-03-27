@@ -248,7 +248,7 @@ class BaseAudioManager:
         try:
             self.output_stream.write(data)
         except Exception as e:
-            print(f"Exception: [{e}]")
+            self.logger.error(f"Exception: [{e}]")
 
     def encode(self, data: bytes) -> bytes:
         """

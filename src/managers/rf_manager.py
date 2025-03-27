@@ -166,7 +166,7 @@ class RFManager:
                         )
                         self.audio_manager.write_output(decoded_audio)
                     except opuslib.exceptions.OpusError as e:
-                        print(
+                        self.logger.error(
                             f"Opus decoding error: {e} | len: {len(opus_frame)}"
                         )
             except queue.Empty:
@@ -204,7 +204,7 @@ class RFManager:
                     self.rfm69.send(pkt)
 
             except Exception as e:
-                print(e)
+                self.logger.error(f"Packet error: {e}")
 
 
 if __name__ == "__main__":

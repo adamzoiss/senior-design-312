@@ -68,7 +68,7 @@ class InterfaceManager(GPIOHandler):
             "InterfaceManager",
             overwrite=True,
             console_level=logging.INFO,
-            console_logging=True,
+            console_logging=EN_CONSOLE_LOGGING,
         )
         ##################################################
         # Variable for volume
@@ -80,12 +80,6 @@ class InterfaceManager(GPIOHandler):
         self.last_state_b = 0
         ##################################################
         # Integrate audio
-        # FORMAT = pyaudio.paInt16
-        # CHANNELS = 1
-        RATE = 16000
-        # FRAME_SIZE = 960  # 20ms Opus frame at 48kHz
-        # PACKET_SIZE = 60  # Radio transceiver limit in bytes
-        # BUFFER_TIMEOUT = 2  # Max seconds to wait for a missing packet
         try:
             self.audio_man = AudioManager(
                 self.thread_manager,
@@ -272,7 +266,10 @@ class InterfaceManager(GPIOHandler):
                             self.transmitter.handle_input_stream,
                         )
                     case 1:  # Button released
+                        # Stop the transmit thread
                         self.thread_manager.stop_thread(TRANSMIT_THREAD)
+                        # Set the transmitter to be able to receive again.
+                        self.transmitter.rfm69.listen()
                     case _:  # Default case
                         self.logger.error("Error GPIO level is not 0 or 1")
             except Exception as e:

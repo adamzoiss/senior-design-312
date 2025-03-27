@@ -22,7 +22,6 @@ RECEIVE_THREAD = "RECEIVE THREAD"
 
 """
 ANO Navigation Encoder and button GPIO assignments and constants.
-
 """
 SW_1 = 24  # GPIO pin for push button 1 - pin 18
 SW_2 = 13  # GPIO pin for push button 2 - pin 33
@@ -59,8 +58,7 @@ ENCRYPTION_KEY = (
 # 2-byte start sequence (can be any unique marker)
 START_SEQUENCE = b"\xa5\x5a"
 PACKET_SIZE = 60  # Radio transceiver byte limit
-BUFFER_TIMEOUT = 2  # Max seconds to wait for a missing packet
-
+BUFFER_TIMEOUT = 1  # Max seconds to wait for a missing packet
 
 """
 SSD1306 Display constants.
@@ -80,6 +78,6 @@ FORMAT = pyaudio.paInt16
 CHANNELS = 1
 RATE = 48000
 FRAME_SIZE = 960  # 20ms Opus frame at 48kHz
-# Input and output device indicies.
+# Input and output device indices.
 INPUT_DEV_INDEX = 1
 OUTPUT_DEV_INDEX = 2

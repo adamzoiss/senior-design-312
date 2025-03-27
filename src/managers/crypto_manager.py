@@ -74,7 +74,9 @@ class CryptoManager:
         """
         # Set up logging
         self.logger: logging = Logger(
-            "CryptoManager", console_level=logging.INFO, console_logging=True
+            "CryptoManager",
+            console_level=logging.INFO,
+            console_logging=EN_CONSOLE_LOGGING,
         )
 
         self.key_file = str(get_proj_root()) + key_file
@@ -164,6 +166,4 @@ class CryptoManager:
 
 
 if __name__ == "__main__":
-
-    print("Crypto Manager Program...")
     crypto = CryptoManager()
