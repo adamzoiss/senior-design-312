@@ -68,6 +68,7 @@ def record_audio(duration=3, sample_rate=44100):
 
 def encrypt_audio_hybrid(file_path, public_key_path):
     try:
+        start_time = time.time()
         # Load the public key
         with open(public_key_path, "rb") as f:
             public_key = serialization.load_pem_public_key(
@@ -122,6 +123,9 @@ def encrypt_audio_hybrid(file_path, public_key_path):
         play_obj.wait_done()
         time.sleep(1)
 
+        end_time = time.time()
+        print(f"Encryption time: {end_time-start_time} seconds")
+
         return True
 
     except Exception as e:
@@ -132,6 +136,8 @@ def encrypt_audio_hybrid(file_path, public_key_path):
 
 def decrypt_audio_hybrid(encrypted_audio_path, private_key_path):
     try:
+        start_time = time.time()
+
         # Load the private key
         with open(private_key_path, "rb") as f:
             private_key = serialization.load_pem_private_key(
@@ -177,6 +183,8 @@ def decrypt_audio_hybrid(encrypted_audio_path, private_key_path):
             wave_file.setframerate(framerate)
             wave_file.writeframes(decrypted_audio)
 
+        end_time = time.time()
+        print(f"Decryption time: {end_time - start_time} seconds")
         return True
 
     except Exception as e:

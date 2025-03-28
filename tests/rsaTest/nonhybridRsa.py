@@ -69,6 +69,7 @@ def record_audio(duration=3, sample_rate=44100):
 
 def encrypt_audio(file_path, public_key_path):
     try:
+        start_time = time.time()
         # Load the public key
         with open(public_key_path, "rb") as f:
             public_key = serialization.load_pem_public_key(
@@ -138,7 +139,9 @@ def encrypt_audio(file_path, public_key_path):
         play_obj = wave_obj.play()
         play_obj.wait_done()
         time.sleep(1)
-
+        
+        end_time = time.time()
+        print(f"Encryption time: {end_time-start_time} seconds")
         return True
 
     except Exception as e:
@@ -149,6 +152,7 @@ def encrypt_audio(file_path, public_key_path):
 
 def decrypt_audio(encrypted_audio_path, private_key_path):
     try:
+        start_time = time.time()
         # Load the private key
         with open(private_key_path, "rb") as f:
             private_key = serialization.load_pem_private_key(
@@ -211,6 +215,9 @@ def decrypt_audio(encrypted_audio_path, private_key_path):
             wave_file.writeframes(audio_array.tobytes())
 
         return True
+
+        end_time = time.time()
+        print(f"Decryption time: {end_time - start_time} seconds")
 
     except Exception as e:
         print(f"Decryption error: {e}")

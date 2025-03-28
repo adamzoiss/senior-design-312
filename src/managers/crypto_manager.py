@@ -144,7 +144,10 @@ class CryptoManager:
         bytes
             Encrypted audio data.
         """
+        start_time = time.time()
         encryptor = self.cipher.encryptor()
+        end_time = time.time()
+        print(f"Encryption time {end_time - start_time} seconds")
         return encryptor.update(data) + encryptor.finalize()
 
     def decrypt(self, data):
@@ -161,7 +164,11 @@ class CryptoManager:
         bytes
             Decrypted audio data.
         """
+
+        start_time = time.time()
         decryptor = self.cipher.decryptor()
+        end_time = time.time()
+        print(f"Decryption time: {end_time - start_time} seconds")
         return decryptor.update(data) + decryptor.finalize()
 
 
