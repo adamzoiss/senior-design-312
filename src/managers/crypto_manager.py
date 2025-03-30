@@ -41,7 +41,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import serialization, hashes
 
 from src.utils.utils import *
-from src.logging.logging_config import *
+from src.logging.logger import *
 
 
 class CryptoManager:
@@ -73,7 +73,11 @@ class CryptoManager:
             Path to the file containing the AES key and IV.
         """
         # Set up logging
-        self.logger: logging = setup_logger("CryptoManager")
+        self.logger: logging = Logger(
+            "CryptoManager",
+            console_level=logging.INFO,
+            console_logging=EN_CONSOLE_LOGGING,
+        )
 
         self.key_file = str(get_proj_root()) + key_file
         self.private_key_file = str(get_proj_root()) + private_key_file
@@ -162,6 +166,4 @@ class CryptoManager:
 
 
 if __name__ == "__main__":
-
-    print("Crypto Manager Program...")
     crypto = CryptoManager()

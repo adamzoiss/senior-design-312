@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest]
         python-version: [3.11, 3.12]
 
     # Job name
@@ -38,25 +38,6 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y portaudio19-dev
 
-      # Step to install dependencies on macOS
-      - name: Install dependencies (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          brew update
-          brew install portaudio
-
-      # Step to install dependencies on Windows
-      - name: Install dependencies (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          Invoke-WebRequest -Uri "http://files.portaudio.com/archives/pa_stable_v190700_20210406.tgz" -OutFile "portaudio.tgz"
-          tar -xvzf portaudio.tgz
-          cd portaudio
-          cmake -G "MinGW Makefiles" .
-          mingw32-make
-          mingw32-make install
-        shell: powershell
-
       # Step to install Python dependencies
       - name: Install Python dependencies
         run: |
@@ -71,8 +52,10 @@ jobs:
       - name: Run Tests
         run: |
           echo "PYTHONPATH=$PYTHONPATH"
+
           pytest
         env:
           # Set the PYTHONPATH environment variable for all OS
           PYTHONPATH: ${{ github.workspace }}
+
 

@@ -6,7 +6,7 @@ Description: This is the base class that will be inherited by
              different "Screen" classes.  
 """
 
-from display_interface.SSD1306_display import SSD1306
+from src.handlers.peripheral_drivers.ssd1306 import SSD1306
 
 
 class Screen:

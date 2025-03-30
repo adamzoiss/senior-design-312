@@ -1,5 +1,6 @@
 __pycache__
 *.egg-info
+.DS_Store
 
 .env
 .vscode
@@ -11,6 +12,6 @@ diff.txt
 .pytest_cache
 
 *.bin
-*.wav
+
 
 .lgd-nfy0

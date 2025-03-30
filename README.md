@@ -26,7 +26,8 @@ __Files & Notes:__ [SharePoint](https://fsu-my.sharepoint.com/personal/amw21i_fs
 6. [Using Git](#using-git)
 
 7. [Team/Contributors Info](#contributors)
-___
+
+---
 
 [PEP 8 – Style Guide for Python Code](https://peps.python.org/pep-0008/#introduction) - Guideline for how to code in Python
 
@@ -34,17 +35,18 @@ ___
 
 [Raspberry Pi pinout information](https://pinout.xyz/) - Useful for setting up buttons, switches, RF chip, etc. via the GPIO pins.
 
-[CC1101 Python Package](https://github.com/fphammerle/python-cc1101) - Package for controlling the CC1101 Transceiver chip.
-
 [Git Information](https://git-scm.com/book/en/v2) - Information on how to use git.
 
 ---
 
 ## __RPI Setup:__
 
+__Flashing an OS:__
+
 1. Download the [Raspberry PI imager](https://www.raspberrypi.com/software/)
 
-2. Select RPI 5 as device and Raspian 64-bit Desktop as OS
+2. Select RPI 5 as device and Raspian 64-bit Lite as OS
+    2.1 - For all the drivers for this project, a non desktop version must be used.
 
 3. Customize settings before flashing
     - Name the device (ex. rpi5-312)
@@ -57,7 +59,7 @@ ___
 
 ---
 
-* __How to SSH to rpi:__
+__How to SSH to rpi *(optional)*:__
 
     - using powershell or terminal (must be on same network)
 
@@ -72,124 +74,51 @@ ___
 
 ---
 
-5. Once SSH connection to the rpi is made, open the config menu via:
+__Driver Installation__
 
-    ```bash
-    sudo raspi-config
-    ```
+* This will update all the base packages and drivers for the Raspberry Pi. 
 
-6. Open interface options (3)
-    - Enable VNC
-    - Enable SPI
-    - Enable Serial Port
-    - Enable Remote GPIO
-
-7. Get a VNC client (easier for signing in to github to get access to repo)
-    -   [RealVNC](https://www.realvnc.com/en/connect/download/viewer/) is a good option
-        - at top bar enter:
-        ```
-        [device name].local
-        ```
-        - then follow steps to see the desktop
-
-8. open a terminal in the vnc and install github CLI:
-    ```bash
-    sudo apt install gh
-    ```
-
-9. __Accessing the Repo:__
-    * First set username and password via:
-        ```bash
-        git config --global user.name "github username"
-        git config --global user.email "github email"
-        ```
-
-        - To verify they were set correctly:
-            ```bash
-            git config --global -l
-            ```
-
-    1. Make a github account (Make sure you set your username and email in global config)
-    2. install _gh_ for github authentication (VNC is a lot easier to use when setting this up on a rpi)
-        ```bash
-        gh auth login
-        ```
-    3. Follow steps and log in
-    4. Verify with:
-        ```bash
-        gh auth status
-        ```
-    5. Cloning with HTTP should work now
-
-10. Update and upgrade the rpi
     ```bash
     sudo apt update
-    ```
-    ```bash
-    sudo apt upgrade
+    sudo apt -y upgrade
+    sudo reboot
     ```
 
-    - reboot the rpi
+     - The following steps are for ease of installation of all the necessary packages/drivers for the RPI. Running the setup script will install all the packages as well as create a virtual python environment in the *senior-design-312* directory.
+
+     - This script also adds aliases to the .bashrc and exports the directory of the project to PYTHONPATH.
+
+    ADDED ALIASES:
+     - ptree - shows the tree of the directory, excludes some of the unimportant files.
+     - penvca - Creates and activates a python virtual environment in *__.env__*
+     - penva - Activates the python virtual environment.
+
+    ```bash
+    sudo apt install -y git
+    mkdir git
+    cd git
+    git clone https://github.com/adamzoiss/senior-design-312.git
+    cd senior-design-312
+    cd setup_utils
+    chmod +x setup.sh
+    ./setup.sh
+    ```
+
+     - After the reboot, change the directory to *senior-design-312* and run:
+
         ```bash
-        sudo reboot
+        penva
         ```
+    
+    All of the code should now be ready to run in the project.
 
 ---
 
 ## __Coding Environment:__
-* Update to the latest `pip` (Package installing program)
+* When running the code ensure that the virtual environment is activated, if the setup script was installed, in the project directory, run:
     ```bash
-    pip install --upgrade pip
+    penva
     ```
-
-* Install needed python packages:
-    ```bash
-    pip install numpy cryptography lgpio
-    ```
-
-* Installing the sound subsystem:
-
-    ```bash
-    sudo apt install pulseaudio
-    ```
-
-* Installing package for audio
-    ```bash
-    cd ~
-    ```
-    ```
-    git clone https://github.com/PortAudio/portaudio.git
-    ```
-    ```
-    cd portaudio
-    ```
-    ```
-    ./configure --enable-shared --with-pulseaudio
-    ```
-    * Ensure that when building, the pulse audio option is enabled otherwise try:
-
-        ```
-        make clean
-        ```
-
-
-    ```
-    make -j$(nproc)
-    ```
-    ```
-    sudo make install
-    ```
-    ```
-    sudo ldconfig
-    ```
-    * Run this command to make sure the package was installed:
-        ```
-        ldconfig -p | grep portaudio
-        ```
-    * If installed correctly install the package:
-        ```
-        pip install pyaudio
-        ```
 
     ---
 
@@ -201,23 +130,13 @@ ___
 
 ## __Running the Code:__
 
-* While testing or developing, run:
+* Assuming the setup script was run to configure the RPI, ensure the virtual environment is activated (.env) to the left of your bash info, and run:
+
     ```bash
-    pip install -e .
-    ```
-    - This creates a development package on the local device, this is used for package managemnet (ensure all the files can be accessed throughout the code)
-
-* Make sure to export the path if there are any errors about imports not working via:
-    ```bash
-    export PYTHONPATH="/path/to/repo"
-    ```
-    > For windows (run this in powershell):
-    ```powershell
-    $env:PYTHONPATH = "C:\path\to\your\modules"
+    python "path to python program"
     ```
 
 
-* Running each program individually should work now.
 
 ## __Creating a daemon:__
 A daemon is a background process that runs continuously and independently of user interaction. It starts at boot (or when needed) and runs in the background, typically without a graphical interface. Daemons are often used for tasks like logging, networking, and running services (like web servers, audio managers, etc.). In the case of this project, a daemon is used to start the interface manager program on boot, and if it crashes, restarts the program.
@@ -610,6 +529,34 @@ This will flag type errors before runtime.
 ---
 
 ## __Using Git:__
+
+__Contributing to the repo from the RPI:__
+* First set username and password via:
+    ```bash
+    git config --global user.name "github username"
+    git config --global user.email "github email"
+    ```
+
+    - To verify they were set correctly:
+        ```bash
+        git config --global -l
+        ```
+
+    1. Make a github account (Make sure you set your username and email in global config)
+    2. install _gh_ for github authentication
+        ```bash
+        sudo apt install gh
+        gh auth login
+        ```
+    3. Follow steps and log in
+    4. Verify with:
+        ```bash
+        gh auth status
+        ```
+
+---
+
+__Git Intro:__
 
 * Always make edits in a `branch`, do not work directly on main. To see what branch is active:
     ```bash

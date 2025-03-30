@@ -2,16 +2,16 @@
 Senior Project : Hardware Encryption Device
 Team 312
 File : gpio_interface.py
-Description: This will handle the interface setup with the rpi. 
+Description: This will handle the interface setup with the rpi.
              GPIO pins will be set up and alerts created. Callbacks
              will be handled in the InterfaceManager.
 """
 
 import lgpio
-from utils.interface_constants import *
+from src.utils.constants import *
 
 
-class GPIOInterface:
+class GPIOHandler:
     """
     A class to handle the GPIO interface setup with the Raspberry Pi.
 
@@ -97,26 +97,14 @@ class GPIOInterface:
         lgpio.gpio_claim_alert(self.handle, SW_3, lgpio.BOTH_EDGES)
         lgpio.gpio_claim_alert(self.handle, SW_4, lgpio.RISING_EDGE)
         lgpio.gpio_claim_alert(self.handle, SW_5, lgpio.RISING_EDGE)
+        # Alert for incoming packet
+        # lgpio.gpio_claim_alert(self.handle, G0, lgpio.RISING_EDGE)
 
     def _encoder_callback(self, chip, gpio, level, timestamp):
-        print(
-            (
-                f"Chip: {chip} | "
-                f"GPIO{gpio} | "
-                f"Level: {level} | "
-                f"Timestamp: {timestamp}"
-            )
-        )
+        pass
 
     def _switch_callback(self, chip, gpio, level, timestamp):
-        print(
-            (
-                f"Chip: {chip} | "
-                f"GPIO{gpio} | "
-                f"Level: {level} | "
-                f"Timestamp: {timestamp}"
-            )
-        )
+        pass
 
     def _init_callbacks(self):
         """
@@ -147,6 +135,10 @@ class GPIOInterface:
         self.sw5_cb = lgpio.callback(
             self.handle, SW_5, lgpio.RISING_EDGE, self._switch_callback
         )
+        # Packet callback
+        # self.pkt_cb = lgpio.callback(
+        #     self.handle, G0, lgpio.RISING_EDGE, self._pkt_callback
+        # )
 
     def _cancel_callbacks(self):
         """
@@ -161,11 +153,12 @@ class GPIOInterface:
         self.sw3_cb.cancel()
         self.sw4_cb.cancel()
         self.sw5_cb.cancel()
+        # self.pkt_cb.cancel()
 
 
 if __name__ == "__main__":
     import time
 
-    gpio_interface = GPIOInterface()
+    gpio_interface = GPIOHandler()
     while True:
         time.sleep(1)

@@ -10,8 +10,9 @@ import threading
 from collections import deque
 import time
 
-from display_interface.base_screen import *
+from src.handlers.display.base_screen import *
 from src.utils.utils import parse_log_line
+from src.utils.constants import *
 
 
 class Menu(Screen):
@@ -44,6 +45,41 @@ class Menu(Screen):
         self.display.draw_text("MENU", x=5, y=2, font_size=12)
         self.display.draw_text("Settings", x=5, y=20, font_size=10)
         self.display.draw_text("Mode", x=5, y=35, font_size=10)
+
+
+class Settings(Screen):
+    """
+    A class to represent the settings screen.
+
+    Attributes
+    ----------
+    SELECTIONS : dict
+        A dictionary of selectable options.
+    """
+
+    def __init__(self, display: SSD1306):
+        """
+        Initializes the Settings with the specified display.
+
+        Parameters
+        ----------
+        display : SSD1306
+            The display object to draw on.
+        """
+        super().__init__(display)
+        self.SELECTIONS["ENC"] = 0
+
+    def draw_screen(self, en_enc=ENCRYPTION):
+        """
+        Draws the settings screen.
+        """
+        self.display.draw_text("SETTINGS", x=5, y=2, font_size=12)
+        self.display.draw_text(
+            f"ENC ({'ON' if en_enc else 'OFF'})",
+            x=5,
+            y=20,
+            font_size=10,
+        )
 
 
 class Mode(Screen):

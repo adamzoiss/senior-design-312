@@ -10,14 +10,13 @@ Description: This is the audio driver for the project. By itself it is able to r
 
 import pyaudio
 import wave
+import opuslib
 import numpy as np
 import os
 import threading
+import struct
 
-from src.managers.crypto_manager import CryptoManager
-from src.utils.utils import *
-from src.logging.logging_config import *
-from src.managers.thread_manager import ThreadManager
+from src.managers.base_audio_manager import *
 
 # Path and file names for the file types.
 PATH = "./audio_files/"
@@ -28,7 +27,7 @@ DECRYPTED_AUDIO_FILE = PATH + "decrypted_audio.wav"
 DECRYPTED_AUDIO_STREAM_FILE = PATH + "decrypted_audio_stream.wav"
 
 
-class AudioManager:
+class AudioManager(BaseAudioManager):
     """
     Driver that handles the audio input and output.
     The user must specify the index of the USB mic and headphones.
@@ -61,86 +60,39 @@ class AudioManager:
         Instance of the CryptoManager for encryption and decryption.
     """
 
-    def __init__(self, thread_manager: ThreadManager):
+    def __init__(
+        self,
+        thread_manager: ThreadManager,
+        frame_size=FRAME_SIZE,
+        format=FORMAT,
+        channels=CHANNELS,
+        sample_rate=RATE,
+        in_device_index=INPUT_DEV_INDEX,
+        out_device_index=OUTPUT_DEV_INDEX,
+    ):
         """
         Initialize the AudioManager instance and configure default audio settings.
         """
+
+        # Call the BaseAudioManager init
+        super().__init__(
+            thread_manager,
+            frame_size,
+            format,
+            channels,
+            sample_rate,
+            in_device_index,
+            out_device_index,
+        )
+
         # Set up logging
-        self.logger: logging = setup_logger("AudioManager")
-
-        self.CHUNK = 32  # Affects latency for monitoring
-        self.FORMAT = pyaudio.paInt16
-        self.CHANNELS = 1
-        self.RATE = 44100
-
-        self.audio = pyaudio.PyAudio()
-        self.input_device_index = 3  #! THIS VALUE CAN CHANGE
-        self.output_device_index = 2  #! THIS VALUE CAN CHANGE
-
-        self.input_stream = None
-        self.output_stream = None
-
-        # Initialize the encryptor
-        self.encryptor = CryptoManager()
-
-        self.volume = 50  # Volume in %
-        self.thread_manager = thread_manager
+        self.logger: logging = Logger(
+            "AudioManager",
+            console_level=logging.INFO,
+            console_logging=EN_CONSOLE_LOGGING,
+        )
 
         self.logger.info("AudioManager initialized.")
-
-    def find_devices(self):
-        """
-        Display all available audio input and output devices.
-        """
-        for i in range(self.audio.get_device_count()):
-            device_info = self.audio.get_device_info_by_index(i)
-            self.logger.info(f"Index {i}: {device_info['name']}")
-
-    def _open_streams(self):
-        """
-        Open the audio input and output streams.
-        """
-        # Configure and open the input stream
-        try:
-            self.input_stream = self.audio.open(
-                format=self.FORMAT,
-                channels=self.CHANNELS,
-                rate=self.RATE,
-                input=True,
-                input_device_index=self.input_device_index,
-                frames_per_buffer=self.CHUNK,
-            )
-        except Exception as e:
-            self.logger.warning(
-                f"Encountered exception with input stream: {e}"
-            )
-        # Configure and open the output stream
-        try:
-            self.output_stream = self.audio.open(
-                format=self.FORMAT,
-                channels=self.CHANNELS,
-                rate=self.RATE,
-                output=True,
-                output_device_index=self.output_device_index,
-                frames_per_buffer=self.CHUNK,
-            )
-        except Exception as e:
-            self.logger.warning(
-                f"Encountered exception with output stream: {e}"
-            )
-
-    def _close_streams(self):
-        """
-        Close the audio input and output streams.
-        """
-        # Close input stream if it is open
-        if self.input_stream:
-            self.input_stream.stop_stream()
-            self.input_stream.close()
-        # Close output stream if it is open
-        if self.output_stream:
-            self.output_stream.stop_stream()
-            self.output_stream.close()
 
     def monitor_audio(self, stop_event: threading.Event):
         """
@@ -161,7 +113,7 @@ class AudioManager:
                 self.logger.warning("Can not open streams if no audio device.")
                 return
             else:
-                self._open_streams()
+                self.open_streams()
 
             # Monitor the audio
             while not stop_event.is_set():
@@ -184,7 +136,7 @@ class AudioManager:
         except KeyboardInterrupt:
             self.logger.info("\nMonitoring stopped.\n")
         finally:
-            self._close_streams()
+            self.close_streams()
             self.logger.info("Monitoring stopped.")
 
     def record_audio(self, output_file=AUDIO_FILE, monitoring=False):
@@ -211,7 +163,7 @@ class AudioManager:
 
         try:
             self.logger.debug("Recording... Press Ctrl+C to stop.")
-            self._open_streams()
+            self.open_streams()
             frames = []  # List to store recorded frames
             try:
                 while True:
@@ -235,7 +187,7 @@ class AudioManager:
         except Exception as e:
             self.logger.error(f"An error occurred: {e}")
         finally:
-            self._close_streams()
+            self.close_streams()
 
     def record_encrypted_audio(
         self, output_file=ENCRYPTED_AUDIO_STREAM_FILE, monitoring=False
@@ -263,7 +215,7 @@ class AudioManager:
 
         try:
             self.logger.debug("Recording... Press Ctrl+C to stop.")
-            self._open_streams()
+            self.open_streams()
             frames = []
             try:
                 while True:
@@ -289,7 +241,7 @@ class AudioManager:
         except Exception as e:
             self.logger.error(f"An error occurred: {e}")
         finally:
-            self._close_streams()
+            self.close_streams()
 
     def encrypt_file(
         self, input_file=AUDIO_FILE, output_file=ENCRYPTED_AUDIO_FILE
@@ -455,18 +407,115 @@ class AudioManager:
         except Exception as e:
             self.logger.error(f"An error occurred during decryption: {e}")
 
-    def terminate(self):
+    def record_encoded_audio(self):
         """
-        Terminate the PyAudio instance.
+        Record audio from the microphone, encode it using the Opus codec, and save it to a file.
 
-        This method releases all resources allocated by PyAudio to ensure proper cleanup.
+        This method records audio from the microphone, encodes it using the Opus codec,
+        and saves the encoded audio to a file.
+
+        Raises
+        ------
+        KeyboardInterrupt
+            Stops recording when Ctrl+C is pressed.
         """
-        # Terminate the PyAudio session
-        self.audio.terminate()
+        # Get the parent directory of the current script
+        parent_dir = get_proj_root()
+        # Create the target folder path in the parent directory
+        output_dir = os.path.join(parent_dir, PATH)
+        # Construct the full path for the output file
+        output_file = os.path.join(output_dir, "recorded_audio.opus")
+        # Ensure that the path exists, and if doesn't is created.
+        ensure_path(str(output_dir))
+
+        # Open the input stream
+        self.open_input_stream()
+
+        # Open file to write encoded audio
+        with open(output_file, "wb") as file:
+            print("Recording... Press Ctrl+C to stop.")
+            try:
+                while True:
+                    data = self.input_stream.read(
+                        self.CHUNK, exception_on_overflow=False
+                    )
+                    encoded = self.encoder.encode(data, self.CHUNK)
+
+                    # Write the length of the encoded frame first (to aid decoding)
+                    file.write(
+                        struct.pack("H", len(encoded))
+                    )  # Store frame size (2 bytes)
+                    file.write(encoded)  # Store actual Opus frame data
+            except KeyboardInterrupt:
+                print("\nRecording stopped.")
+                # Close input stream
+                self.input_stream.stop_stream()
+                self.input_stream.close()
+
+    def play_encoded_audio(self):
+        """
+        Play back audio that has been encoded using the Opus codec.
+
+        This method reads an Opus-encoded audio file, decodes it using the Opus codec,
+        and plays back the decoded audio.
+        """
+        # Get the parent directory of the current script
+        parent_dir = get_proj_root()
+        # Create the target folder path in the parent directory
+        output_dir = os.path.join(parent_dir, PATH)
+        # Construct the full path for the output file
+        input_file = os.path.join(output_dir, "recorded_audio.opus")
+
+        self.open_output_stream()
+
+        # Open file to read encoded audio
+        with open(input_file, "rb") as file:
+            encoded_data = file.read()
+
+        # Decode Opus audio
+        decoded_frames = []
+        offset = 0
+
+        while offset < len(encoded_data):
+            try:
+                # Read stored frame size first
+                frame_size = struct.unpack_from("H", encoded_data, offset)[0]
+                offset += 2  # Move past the frame size bytes
+
+                # Extract frame data
+                chunk = encoded_data[offset : offset + frame_size]
+                offset += frame_size  # Move past the actual frame data
+
+                # Decode the frame
+                decoded = self.decoder.decode(chunk, self.CHUNK)
+                decoded_frames.append(decoded)
+            except (opuslib.exceptions.OpusError, struct.error) as e:
+                print(f"Opus decoding error: {e}")
+                break
+
+        # Combine all decoded frames
+        decoded_audio = b"".join(decoded_frames)
+
+        # Play back the decoded audio
+        self.output_stream.write(decoded_audio)
+
+        # Close output stream
+        self.output_stream.stop_stream()
+        self.output_stream.close()
 
 
 if __name__ == "__main__":
-    handler = AudioManager()
+    tm = ThreadManager()
+    handler = AudioManager(
+        tm,
+        frame_size=960,
+        format=pyaudio.paInt16,
+        channels=1,
+        sample_rate=16000,
+        in_device_index=1,
+        out_device_index=2,
+    )
+
     print(
         (
             "1. Monitor audio\n"
@@ -476,10 +525,12 @@ if __name__ == "__main__":
             "5. Encrypt an audio file\n"
             "6. Decrypt an audio file\n"
             "7. Decrypt an audio stream\n"
+            "8. Record & encode audio\n"
+            "9. Play encoded audio"
         )
     )
 
-    choice = input("Choose an option (1/2/3/4/5/6/7): ").strip()
+    choice = input("Choose an option (1/2/3/4/5/6/7/8/9/): ").strip()
 
     try:
         if choice == "1":
@@ -513,6 +564,10 @@ if __name__ == "__main__":
                 print("Not available yet.")
             else:
                 print("Invalid choice.")
+        elif choice == "8":
+            handler.record_encoded_audio()
+        elif choice == "9":
+            handler.play_encoded_audio()
         else:
             print("Invalid choice.")
     finally:

@@ -7,14 +7,15 @@ Description: This will handle the interface with the rpi. GPIO pins will be set 
 """
 
 import time
-from src.managers.navigation_manager import *
-from src.gpio_interface.gpio_interface import *
+from src.handlers.display_handler import *
+from handlers.gpio_handler import *
 from src.managers.audio_manager import *
-from src.logging.logging_config import setup_logger
+from src.logging.logger import *
 from src.managers.thread_manager import ThreadManager
+from src.managers.rf_manager import *
 
 
-class InterfaceManager(GPIOInterface):
+class InterfaceManager(GPIOHandler):
     """
     A class to manage the interface with the Raspberry Pi, including GPIO pins setup and handling.
 
@@ -26,7 +27,7 @@ class InterfaceManager(GPIOInterface):
         The last state value for encoder A.
     last_state_b : int
         The last state value for encoder B.
-    nav : NavigationManager
+    nav : DisplayHandler
         The navigation manager for the display.
     audio_man : AudioManager
         The audio manager for handling audio operations.
@@ -63,19 +64,34 @@ class InterfaceManager(GPIOInterface):
         self.thread_manager = thread_manager
         #################################################
         # Set up logging
-        self.logger: logging = setup_logger("InterfaceManager", overwrite=True)
+        self.logger: logging = Logger(
+            "InterfaceManager",
+            overwrite=True,
+            console_level=logging.INFO,
+            console_logging=EN_CONSOLE_LOGGING,
+        )
         ##################################################
         # Variable for volume
-        self.volume = 50
+        self.volume = 100
         # Position variable for menu navigation
         self.position = -1
         # Last state values for the encoders
         self.last_state_a = 0
         self.last_state_b = 0
+        # Enable encryption
+        self.enc = ENCRYPTION
         ##################################################
         # Integrate audio
         try:
-            self.audio_man = AudioManager(thread_manager)
+            self.audio_man = AudioManager(
+                self.thread_manager,
+                frame_size=FRAME_SIZE,
+                format=FORMAT,
+                channels=1,
+                sample_rate=RATE,
+                in_device_index=INPUT_DEV_INDEX,
+                out_device_index=OUTPUT_DEV_INDEX,
+            )
         except Exception as e:
             self.logger.critical(
                 f"Exception when initialing audio manager: {e}"
@@ -84,13 +100,21 @@ class InterfaceManager(GPIOInterface):
         # Display set up
         try:
             self.display = SSD1306(thread_manager)
-            self.nav = NavigationManager(self.display)
+            self.nav = DisplayHandler(self.display)
             self.nav.display.clear_screen()
             self.nav.get_screen(Menu)
             self.nav.CURRENT_SCREEN.update_volume(self.volume)
             self.nav.display.refresh_display()
         except Exception as e:
             self.logger.critical(f"Exception when initialing display: {e}")
+        ##################################################
+        # Set up Transmitter
+        try:
+            self.transmitter = RFManager(
+                self.handle, self.thread_manager, self.audio_man
+            )
+        except Exception as e:
+            self.logger.critical(f"Exception when initialing transmitter: {e}")
         ##################################################
         # State that the manager initialized
         self.logger.info("InterfaceManager initialized")
@@ -116,6 +140,13 @@ class InterfaceManager(GPIOInterface):
         timestamp : int
             The timestamp of the event.
         """
+        self.logger.debug(
+            (
+                f"Chip{chip} | GPIO{gpio} | level: {level} | "
+                f"Position: {self.position}"
+            )
+        )
+
         # If in debug mode, do not allow encoder to change volume
         if isinstance(self.nav.CURRENT_SCREEN, Debug):
             return
@@ -137,12 +168,6 @@ class InterfaceManager(GPIOInterface):
                 if self.volume < 100:
                     self.volume += 5
                 ##############################################################
-        self.logger.debug(
-            (
-                f"Chip{chip} | GPIO{gpio} | level: {level} | "
-                f"Position: {self.position}"
-            )
-        )
 
         # Update last states for the encoders
         self.last_state_a = level
@@ -182,9 +207,19 @@ class InterfaceManager(GPIOInterface):
                 if isinstance(self.nav.CURRENT_SCREEN, Debug):
                     return
 
-                # Check if the current screen is the menu
                 if isinstance(self.nav.CURRENT_SCREEN, Menu):
+                    # Check if settings was selected.
                     if (
+                        self.position
+                        == self.nav.CURRENT_SCREEN.SELECTIONS["SETTINGS"]
+                    ):
+                        self.nav.display.clear_screen()
+                        self.nav.get_screen(Settings, self.enc)
+                        self.nav.CURRENT_SCREEN.update_volume(self.volume)
+                        self.nav.display.refresh_display()
+                        self.position = -1
+                    # Check if mode was selected.
+                    elif (
                         self.position
                         == self.nav.CURRENT_SCREEN.SELECTIONS["MODE"]
                     ):
@@ -207,6 +242,23 @@ class InterfaceManager(GPIOInterface):
                         self.thread_manager.start_thread(
                             "Debug", self.nav.CURRENT_SCREEN.display_debug_info
                         )
+                elif isinstance(self.nav.CURRENT_SCREEN, Settings):
+                    if (
+                        self.position
+                        == self.nav.CURRENT_SCREEN.SELECTIONS["ENC"]
+                    ):
+                        self.nav.display.clear_screen()
+                        self.enc = not self.enc
+                        if self.enc:
+                            self.transmitter.rfm69.encryption_key = (
+                                ENCRYPTION_KEY
+                            )
+                        else:
+                            self.transmitter.rfm69.encryption_key = None
+                        self.nav.get_screen(Settings, self.enc)
+                        self.nav.CURRENT_SCREEN.update_volume(self.volume)
+                        self.nav.display.refresh_display()
+                        self.position = -1
                 else:
                     pass
             except KeyError:
@@ -239,10 +291,14 @@ class InterfaceManager(GPIOInterface):
                 match level:
                     case 0:  # Button pressed
                         self.thread_manager.start_thread(
-                            "Audio Monitor", self.audio_man.monitor_audio
+                            TRANSMIT_THREAD,
+                            self.transmitter.handle_input_stream,
                         )
                     case 1:  # Button released
-                        self.thread_manager.stop_thread("Audio Monitor")
+                        # Stop the transmit thread
+                        self.thread_manager.stop_thread(TRANSMIT_THREAD)
+                        # Set the transmitter to be able to receive again.
+                        self.transmitter.rfm69.listen()
                     case _:  # Default case
                         self.logger.error("Error GPIO level is not 0 or 1")
             except Exception as e:
@@ -274,9 +330,12 @@ class InterfaceManager(GPIOInterface):
 
 
 if __name__ == "__main__":
+    import signal
+
     try:
         thread_manager = ThreadManager()
         interface = InterfaceManager(thread_manager)
+
         while True:
             time.sleep(1)
     except KeyboardInterrupt:

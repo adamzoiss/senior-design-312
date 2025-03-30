@@ -133,6 +133,9 @@ dependencies = [
             "cryptography", 
             "lgpio; sys_platform == 'linux'",
             "pyaudio", 
+            "opuslib",
+            "pillow",
+            "spidev",
             "pytest"
             ]
 
