@@ -19,7 +19,7 @@ class ThreadManager:
 
     def start_thread(self, name, target, args=()):
         """
-        Starts a new thread if it’s not already running.
+        Starts a new thread if it's not already running.
 
         Parameters:
         - name (str): Unique thread name.

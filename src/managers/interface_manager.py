@@ -78,8 +78,6 @@ class InterfaceManager(GPIOHandler):
         # Last state values for the encoders
         self.last_state_a = 0
         self.last_state_b = 0
-        # Enable encryption
-        self.enc = ENCRYPTION
         ##################################################
         # Integrate audio
         try:
@@ -214,7 +212,12 @@ class InterfaceManager(GPIOHandler):
                         == self.nav.CURRENT_SCREEN.SELECTIONS["SETTINGS"]
                     ):
                         self.nav.display.clear_screen()
-                        self.nav.get_screen(Settings, self.enc)
+
+                        self.nav.get_screen(
+                            Settings,
+                            self.audio_man.crypto_manager.penc_en,
+                            self.audio_man.crypto_manager.denc_en,
+                        )
                         self.nav.CURRENT_SCREEN.update_volume(self.volume)
                         self.nav.display.refresh_display()
                         self.position = -1
@@ -243,19 +246,55 @@ class InterfaceManager(GPIOHandler):
                             "Debug", self.nav.CURRENT_SCREEN.display_debug_info
                         )
                 elif isinstance(self.nav.CURRENT_SCREEN, Settings):
+                    # Toggling encryption
                     if (
                         self.position
-                        == self.nav.CURRENT_SCREEN.SELECTIONS["ENC"]
+                        == self.nav.CURRENT_SCREEN.SELECTIONS["PENC"]
                     ):
                         self.nav.display.clear_screen()
-                        self.enc = not self.enc
-                        if self.enc:
+                        self.audio_man.crypto_manager.penc_en = (
+                            not self.audio_man.crypto_manager.penc_en
+                        )
+                        # If encryption is enabled, set the encryption key
+                        if self.audio_man.crypto_manager.penc_en:
                             self.transmitter.rfm69.encryption_key = (
                                 ENCRYPTION_KEY
                             )
+                            self.logger.info("Packet Encryption Enabled")
+                        # If encryption is disabled, set the encryption key to None
                         else:
                             self.transmitter.rfm69.encryption_key = None
-                        self.nav.get_screen(Settings, self.enc)
+                            self.logger.info("Packet Encryption Disabled")
+
+                        # Update the display
+                        self.nav.get_screen(
+                            Settings,
+                            self.audio_man.crypto_manager.penc_en,
+                            self.audio_man.crypto_manager.denc_en,
+                        )
+                        self.nav.CURRENT_SCREEN.update_volume(self.volume)
+                        self.nav.display.refresh_display()
+                        self.position = -1
+
+                    elif (
+                        self.position
+                        == self.nav.CURRENT_SCREEN.SELECTIONS["DENC"]
+                    ):
+                        self.nav.display.clear_screen()
+                        self.audio_man.crypto_manager.denc_en = (
+                            not self.audio_man.crypto_manager.denc_en
+                        )
+                        if self.audio_man.crypto_manager.denc_en:
+                            self.logger.info("Data Encryption Enabled")
+                        else:
+                            self.logger.info("Data Encryption Disabled")
+
+                        # Update the display
+                        self.nav.get_screen(
+                            Settings,
+                            self.audio_man.crypto_manager.penc_en,
+                            self.audio_man.crypto_manager.denc_en,
+                        )
                         self.nav.CURRENT_SCREEN.update_volume(self.volume)
                         self.nav.display.refresh_display()
                         self.position = -1

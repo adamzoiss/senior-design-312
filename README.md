@@ -1,33 +1,17 @@
 # Senior Design Project - Team 312
 
 
-## Sharepoint link:
 
-__Files & Notes:__ [SharePoint](https://fsu-my.sharepoint.com/personal/amw21i_fsu_edu/_layouts/15/Doc.aspx?sourcedoc={c8d6e6cb-04f5-4a5c-a4a4-ac70581ecfba}&action=edit&wd=target%28Class%20Handouts.one%7C43749e4e-c570-4688-8d40-703e8b013bf2%2FSenior%20Design%20Projects%7C01b6a98f-3880-41ca-834b-d67c770890d6%2F%29&wdorigin=NavigationUrl)
 
----
-
-# Quick Links for Navigation and Useful Information
-
-1. [RPI Setup](#rpi-setup)
-
-2. [Coding Environment](#coding-environment)
-
-3. [Running the Code](#running-the-code)
-
-4. [Creating a daemon](#creating-a-daemon)
-
-5. [Documenting Python Code](#documenting-python-code)
-    
-    4.1 - [Class/Function Docs](#code-documentation)
-    
-    4.2 - [Type Hinting](#type-hinting-guide)
-
-6. [Using Git](#using-git)
-
-7. [Team/Contributors Info](#contributors)
+__Share Point Quick Link:__ [Project SharePoint](https://fsu-my.sharepoint.com/personal/amw21i_fsu_edu/_layouts/15/Doc.aspx?sourcedoc={c8d6e6cb-04f5-4a5c-a4a4-ac70581ecfba}&action=edit&wd=target%28Class%20Handouts.one%7C43749e4e-c570-4688-8d40-703e8b013bf2%2FSenior%20Design%20Projects%7C01b6a98f-3880-41ca-834b-d67c770890d6%2F%29&wdorigin=NavigationUrl)
 
 ---
+
+__Table of Contents__
+[TOC]
+
+---
+__Resources:__
 
 [PEP 8 – Style Guide for Python Code](https://peps.python.org/pep-0008/#introduction) - Guideline for how to code in Python
 
@@ -39,9 +23,165 @@ __Files & Notes:__ [SharePoint](https://fsu-my.sharepoint.com/personal/amw21i_fs
 
 ---
 
-## __RPI Setup:__
+## Project Description:
 
-__Flashing an OS:__
+The purpose of the project is to have a hardware implementation for voice encryption. The approach taken was to use two Raspberry Pi 5's that are capable of encrypting and decrypting audio streams using AES or RSA. The encrypted stream is then sent to another Raspberry Pi via the RFM69 915MHz transceiver where it is then decrypted and played back. The functionality is like that of a rudimentary military grade radio (encrypted walkie talkie).
+
+### Overall Processes:
+To record the audio a button on the device is pressed, starting a thread to handle recording the audio and then transmitting it as shown in the diagram. The receiving device, upon receiving the RF signal and start sequence will start playing back the audio.
+
+```mermaid
+%%{init: {'theme': 'default', 'themeVariables': { 'fontSize': '18px', 'fontFamily': 'arial', 'edgeLabelBackground':'#ffffff'}, 'flowchart': {'diagramPadding': 40, 'curve': 'linear'}} }%%
+flowchart LR
+    %% Increase arrow thickness
+    linkStyle default stroke-width:3px;
+
+    subgraph sender["Audio Transmission"]
+        record["Record Audio"] --> process["Process Audio"]
+        process --> encode["Encode Audio"]
+        encode --> encrypt["Encrypt Data"]
+        encrypt --> send["Send Data"]
+    end
+
+    subgraph receiver["Reception and Playback"]
+        receive["Receive Data"] --> decrypt["Decrypt Data"]
+        decrypt --> decode["Decode Audio"]
+        decode --> playback["Playback Audio"]
+    end
+
+    sender <==> receiver
+
+    classDef default fill:#f0f8ff,stroke:#333,stroke-width:2px;
+    classDef process fill:#e6ffe6,stroke:#333,stroke-width:2px;
+    classDef encrypt fill:#ffe6e6,stroke:#333,stroke-width:2px;
+
+    class record,process,encode,encrypt,send,receive,decrypt,decode,playback process;
+```
+
+### Audio Processing:
+The audio processing works to smooth the signal and make it so that if the user is far from the microphone, an audible sound is still played on the device.
+
+```mermaid
+%%{init: {'theme': 'default', 'themeVariables': { 'fontSize': '18px', 'fontFamily': 'arial', 'edgeLabelBackground':'#ffffff', 'tertiaryColor': '#f5f5f5'}, 'flowchart': {'diagramPadding': 40, 'curve': 'linear'}} }%%
+flowchart TB
+    %% Increase arrow thickness
+    linkStyle default stroke-width:3px;
+    
+    audioIn["Input Audio"] --> rmsCalc["Calculate RMS Level"]
+    rmsCalc --> noiseGate{"RMS > Noise Threshold?"}
+    noiseGate -->|"No"| mute["Mute Output"]
+    noiseGate -->|"Yes"| normalize["Apply Normalization"]
+    normalize --> gainSmooth["Smooth Gain Changes"]
+    gainSmooth --> volumeAdjust["Apply Volume Control"]
+    mute --> output["Output Audio"]
+    volumeAdjust --> output
+    
+    classDef default fill:#f9f0ff,stroke:#333,stroke-width:2px;
+    classDef decision fill:#fffacd,stroke:#333,stroke-width:2px;
+    classDef output fill:#e6ffe6,stroke:#333,stroke-width:2px;
+    
+    class noiseGate decision;
+    class output output;
+```
+
+### Packet Fragmentation and Transmission Process
+Since the RF transceiver is limited in it's transmission speed, the audio must be encoded instead of sent raw, this reduces the amount of data that is needed to be transferred.
+
+```mermaid
+%%{init: {'theme': 'default', 'themeVariables': { 'fontSize': '18px', 'fontFamily': 'arial', 'edgeLabelBackground':'#ffffff'}, 'flowchart': {'diagramPadding': 40, 'curve': 'linear'}} }%%
+flowchart TB
+    %% Increase arrow thickness
+    linkStyle default stroke-width:3px;
+    
+    audioFrame["Encoded Audio Frame"] --> sizeCheck{"Size > Max Packet Size (60 bytes)"}
+    
+    sizeCheck -->|"No"| singlePacket["Create Single Packet"]
+    sizeCheck -->|"Yes"| fragment["Fragment Data"]
+    
+    fragment --> packetHeader1["Add Packet 1 Header"]
+    fragment --> packetHeader2["Add Packet 2 Header"]
+    fragment --> morePackets["...Additional Packets..."]
+    
+    packetHeader1 --> encrypt1["Encrypt Packet 1"]
+    packetHeader2 --> encrypt2["Encrypt Packet 2"] 
+    morePackets --> encryptMore["Encrypt Additional Packets"]
+    
+    singlePacket --> encryptSingle["Encrypt Single Packet"]
+    
+    encrypt1 --> txQueue["Transmission Queue"]
+    encrypt2 --> txQueue
+    encryptMore --> txQueue
+    encryptSingle --> txQueue
+    
+    txQueue --> send["Send Packets Sequentially"]
+    
+    
+    classDef default fill:#f0f8ff,stroke:#333,stroke-width:2px;
+    classDef decision fill:#fffacd,stroke:#333,stroke-width:2px;
+    classDef process fill:#e6ffe6,stroke:#333,stroke-width:2px;
+    classDef encrypt fill:#ffe6e6,stroke:#333,stroke-width:2px;
+    
+    class sizeCheck decision;
+    class encrypt1,encrypt2,encryptMore,encryptSingle encrypt;
+    class fragment,singlePacket,txQueue process;
+```
+
+### Packet Reassembly Process on Receiver
+Since the audio data is broken up while being sent, it must be reassembled before it can be played back.
+
+```mermaid
+%%{init: {'theme': 'default', 'themeVariables': { 'fontSize': '18px', 'fontFamily': 'arial', 'edgeLabelBackground':'#ffffff'}, 'flowchart': {'diagramPadding': 40, 'curve': 'linear'}} }%%
+flowchart TB
+    %% Increase arrow thickness
+    linkStyle default stroke-width:3px;
+    
+    receive["Receive Packet"] --> decrypt["Decrypt Packet"]
+    
+    decrypt --> headerCheck{"Is Fragment?"}
+    
+    headerCheck -->|"No"| processComplete["Process Complete Packet"]
+    headerCheck -->|"Yes"| bufferStorage["Store in Fragment Buffer"]
+    
+    bufferStorage --> completeCheck{"All Fragments Received?"}
+    
+    completeCheck -->|"No"| waitMore["Wait for More Fragments"]
+    completeCheck -->|"Yes"| reassemble["Reassemble Complete Data"]
+    
+    waitMore --> receive
+    
+    reassemble --> processComplete
+    
+    processComplete --> audioDecoding["Decode Audio"]
+    
+    classDef default fill:#f0f8ff,stroke:#333,stroke-width:2px;
+    classDef decision fill:#fffacd,stroke:#333,stroke-width:2px;
+    classDef process fill:#e6ffe6,stroke:#333,stroke-width:2px;
+    classDef decrypt fill:#ffe6e6,stroke:#333,stroke-width:2px;
+    
+    class headerCheck,completeCheck decision;
+    class decrypt decrypt;
+    class reassemble,processComplete,bufferStorage process;
+```
+
+
+
+<!-- <details>
+<summary>Click to expand test output</summary> -->
+
+### Materials:
+
+* [Raspberry Pi 5](https://www.adafruit.com/product/5813)
+* [RPI UPS](https://www.amazon.com/Geekworm-X1200-Raspberry-Shutdown-Detection/dp/B0CRYVC8C5/ref=sr_1_5?crid=3T93BCIOWTPNQ&dib=eyJ2IjoiMSJ9.DSS9mwB54EGjoH9xGkIHFd17faf9UodmdVZNEF_NOwU1_TtXE9s5ghDnBO93wSyNeB1lbRl8e1wEuyPHb3ZzxMwYsCVhmp-j85LuohlRSUfx-YZh10-CHeAW6Z2ln4s2YudasiG1aBX-cWL1VihQCH_vzZzjAtUG9teGnXM9BbOQCqw_GdSpZU175fsOAMTuqZAPb5n3mfgUwXqlgPdfhwnoqzu5ng3niiaieRxPhM2FF5Hz5nVOXCaIMCLdwqQHWaklxH1ObAC3PyNYaox4awEBOQx2zcOAy6-PPfX7jiT5Lc-Iv-FmTJBIp-wI4evsTNgZJfQ-FAyS--bPdEAYpfdK69StwQNbdMvML9t9LII.ysi9Ba5JT9anmJP7jrCq64x9GX5JekWu3_toRT-0F-U&dib_tag=se&keywords=rpi5+ups+geekworm&qid=1743437047&s=electronics&sprefix=rpi5+ups+geekworm%2Celectronics%2C111&sr=1-5)
+* [ANO Directional Navigation](https://www.adafruit.com/product/5001)
+* [RFM69HCW Transceiver](https://www.adafruit.com/product/3070)
+* [Voice Bonnet](https://www.adafruit.com/product/4757)
+* [OLED Display](https://www.amazon.com/dp/B0CHF7LHVT?ref=ppx_yo2ov_dt_b_fed_asin_title&th=1)
+* [Speaker](https://www.adafruit.com/product/4227)
+---
+
+## RPI Setup:
+
+### Flashing an OS:
 
 1. Download the [Raspberry PI imager](https://www.raspberrypi.com/software/)
 
@@ -59,13 +199,15 @@ __Flashing an OS:__
 
 ---
 
-__How to SSH to rpi *(optional)*:__
+### How to SSH to rpi:
 
-    - using powershell or terminal (must be on same network)
+*This step is optional*
 
-        ```bash
-        ssh [username]@[device name].local
-        ```
+Using powershell or terminal (must be on same network)
+
+```bash
+ssh [username]@[device name].local
+```
 
 * Follow steps to allow connection
 
@@ -74,7 +216,7 @@ __How to SSH to rpi *(optional)*:__
 
 ---
 
-__Driver Installation__
+### Driver Installation:
 
 * This will update all the base packages and drivers for the Raspberry Pi. 
 
@@ -114,31 +256,29 @@ __Driver Installation__
 
 ---
 
-## __Coding Environment:__
+## Coding Environment:
 * When running the code ensure that the virtual environment is activated, if the setup script was installed, in the project directory, run:
     ```bash
     penva
     ```
 
-    ---
-
-    Very helpful if weird messages showing up when running program:
-
-    [Unknown PCM cards.pcm.XXXX](https://stackoverflow.com/questions/7088672/pyaudio-working-but-spits-out-error-messages-each-time)
-
 ---
 
-## __Running the Code:__
+### Running the Code:
 
 * Assuming the setup script was run to configure the RPI, ensure the virtual environment is activated (.env) to the left of your bash info, and run:
-
     ```bash
     python "path to python program"
     ```
 
+* To run the tests and view the statistics, run:
+    ```bash
+    pytest
+    ```
 
+---
 
-## __Creating a daemon:__
+## Creating a daemon:
 A daemon is a background process that runs continuously and independently of user interaction. It starts at boot (or when needed) and runs in the background, typically without a graphical interface. Daemons are often used for tasks like logging, networking, and running services (like web servers, audio managers, etc.). In the case of this project, a daemon is used to start the interface manager program on boot, and if it crashes, restarts the program.
 
 * Creating a Systemd Service:
@@ -213,12 +353,88 @@ WantedBy=multi-user.target
         sudo systemctl restart run-py-program.service
         ```
 
+---
 
+## Using Git:
+Git is a distributed version control system designed to track changes in source code during software development. It allows multiple developers to collaborate on a project by managing code changes, maintaining a history of modifications, and enabling branching and merging workflows. Git ensures code integrity and simplifies collaboration by providing tools to resolve conflicts and review changes.
 
+### Setting up Git:
+* First set username and password via:
+    ```bash
+    git config --global user.name "github username"
+    git config --global user.email "github email"
+    ```
 
-## __Documenting Python Code:__
+    - To verify they were set correctly:
+        ```bash
+        git config --global -l
+        ```
 
-### __Code Documentation__
+    1. Make a github account (Make sure you set your username and email in global config)
+    2. install _gh_ for github authentication
+        ```bash
+        sudo apt install gh
+        gh auth login
+        ```
+    3. Follow steps and log in
+    4. Verify with:
+        ```bash
+        gh auth status
+        ```
+
+---
+
+### Git usage
+
+* Always make edits in a `branch`, do not work directly on main. To see what branch is active:
+    ```bash
+    git branch
+    ```
+
+* To `checkout` an active branch with name *branchname*:
+    ```bash
+    git checkout branchname
+    ```
+
+* To create a new working branch:
+    ```bash
+    git checkout -b nameofbranch
+    ```
+
+* After making changes on a branch, save (`commit`) the changes by:
+    ```bash
+    git commit -a -m "brief description of what was done"
+    ```
+    - This saves the changes locally on your computer, to add (push the changes to github)
+        ```bash
+        git push origin branchname
+        ```
+        - Alternatively, If you want Git to automatically set upstream branches when pushing new local branches, you can enable:
+            ```bash
+            git config --global push.autoSetupRemote true
+            ```
+            This way, next time you create a new branch and push, Git will automatically set up the remote tracking branch. The command will now look like:
+            ```bash
+            git push
+            ```
+    
+
+* Getting the most up to date code:
+    - save changes that were done on your branch via a commit or stash
+    - check out `main`
+        ```bash
+        git fetch
+        ```
+        ```bash
+        git pull
+        ```
+    - the most up to date version of main is now what you see
+
+---
+
+## Documenting Python Code:
+
+### Code Documentation
 
 `numpy` style documentation is being used for this project.
 
@@ -376,7 +592,7 @@ __NumPy Docstrings Benefits__
 
 ---
 
-### __Type Hinting Guide:__
+### Type Hinting Guide:
 
 1. Function Arguments & Return Types
     ```python
@@ -525,82 +741,6 @@ Then run:
 mypy my_script.py
 ```
 This will flag type errors before runtime.
-
----
-
-## __Using Git:__
-
-__Contributing to the repo from the RPI:__
-* First set username and password via:
-    ```bash
-    git config --global user.name "github username"
-    git config --global user.email "github email"
-    ```
-
-    - To verify they were set correctly:
-        ```bash
-        git config --global -l
-        ```
-
-    1. Make a github account (Make sure you set your username and email in global config)
-    2. install _gh_ for github authentication
-        ```bash
-        sudo apt install gh
-        gh auth login
-        ```
-    3. Follow steps and log in
-    4. Verify with:
-        ```bash
-        gh auth status
-        ```
-
----
-
-__Git Intro:__
-
-* Always make edits in a `branch`, do not work directly on main. To see what branch is active:
-    ```bash
-    git branch
-    ```
-
-* To `checkout` an active branch with name *branchname*:
-    ```bash
-    git checkout branchname
-    ```
-
-* To create a new working branch:
-    ```bash
-    git checkout -b nameofbranch
-    ```
-
-* After making changes on a branch, save (`commit`) the changes by:
-    ```bash
-    git commit -a -m "brief description of what was done"
-    ```
-    - This saves the changes locally on your computer, to add (push the changes to github)
-        ```bash
-        git push origin branchname
-        ```
-        - Alternatively, If you want Git to automatically set upstream branches when pushing new local branches, you can enable:
-            ```bash
-            git config --global push.autoSetupRemote true
-            ```
-            This way, next time you create a new branch and push, Git will automatically set up the remote tracking branch. The command will now look like:
-            ```bash
-            git push
-            ```
-    
-
-* Getting the most up to date code:
-    - save changes that were done on your branch via a commit or stash
-    - check out `main`
-        ```bash
-        git fetch
-        ```
-        ```bash
-        git pull
-        ```
-    - the most up to date version of main is now what you see
 
 ---
 

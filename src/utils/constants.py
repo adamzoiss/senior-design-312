@@ -24,6 +24,8 @@ RECEIVE_THREAD = "RECEIVE THREAD"
 Device Settings
 """
 ENCRYPTION = True  # Enable encryption
+PACKET_ENCRYPTION = True  # Enable packet encryption
+DATA_ENCRYPTION = True  # Enable data encryption
 
 """
 ANO Navigation Encoder and button GPIO assignments and constants.

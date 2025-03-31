@@ -3,7 +3,7 @@ Senior Project : Hardware Encryption Device
 Team 312
 File : base_screen.py
 Description: This is the base class that will be inherited by
-             different "Screen" classes.  
+             different "Screen" classes.
 """
 
 from src.handlers.peripheral_drivers.ssd1306 import SSD1306
@@ -42,8 +42,8 @@ class Screen:
         del self.display
 
     def update_volume(self, volume_percentage: int):
-        self.display.clear_rectangle(50, 0, 110, 14)
-        self.display.draw_text(f"Vol: {volume_percentage}%", x=50, y=2)
+        self.display.clear_rectangle(70, 0, 128, 14)
+        self.display.draw_text(f"Vol: {volume_percentage}%", x=75, y=2)
 
     def select(self, selection: str):
         """

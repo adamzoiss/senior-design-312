@@ -1,0 +1,88 @@
+This was run on macos, for real results run on rpi:
+
+pytest > docs/test_results.txt
+
+============================= test session starts ==============================
+platform darwin -- Python 3.13.2, pytest-8.3.5, pluggy-1.5.0 -- /Users/adamzoiss/Documents/git/senior-design-312/.env/bin/python3.13
+cachedir: .pytest_cache
+rootdir: /Users/adamzoiss/Documents/git/senior-design-312
+configfile: pytest.ini
+testpaths: tests
+collecting ... collected 12 items
+
+tests/src/managers/test_audio_manager.py::test_creation PASSED           [  8%]
+tests/src/managers/test_base_audio_manager.py::test_creation PASSED      [ 16%]
+tests/src/managers/test_base_audio_manager.py::test_stream PASSED        [ 25%]
+tests/src/managers/test_base_audio_manager.py::test_encryption PASSED    [ 33%]
+tests/src/managers/test_base_audio_manager.py::test_decryption PASSED    [ 41%]
+tests/src/managers/test_base_audio_manager.py::test_encryption_performance 
+--- Starting encryption performance test ---
+
+Encryption Performance Metrics:
+Total data processed: 0.27 MB
+Total time: 0.0006 seconds
+Throughput: 471.11 MB/s
+Average time per chunk (1920 bytes): 3.89 µs
+
+---  Ending encryption performance test  ---
+PASSED [ 50%]
+tests/src/managers/test_base_audio_manager.py::test_decryption_performance 
+--- Starting decryption performance test ---
+
+Decryption Performance Metrics:
+Total data processed: 0.27 MB
+Total time: 0.0005 seconds
+Throughput: 496.88 MB/s
+Average time per chunk (1920 bytes): 3.69 µs
+
+---  Ending decryption performance test  ---
+PASSED [ 58%]
+tests/src/managers/test_crypto_manager.py::test_creation PASSED          [ 66%]
+tests/src/managers/test_rf_manager.py::test_rf_manager_initialization PASSED [ 75%]
+tests/src/managers/test_rf_manager.py::test_packet_sending 
+--- Starting RF packet sending performance test ---
+
+RF Packet Sending Performance:
+Total packets sent: 1000
+Total data sent: 58.59 KB
+Total time: 4.5083 seconds
+Throughput: 103.97 kbps
+Average time per packet: 4.51 ms
+Packets per second: 221.81
+Mock RFM69 stats: {'packets_sent': 1000, 'packets_received': 0, 'bytes_sent': 60000, 'bytes_received': 0, 'send_queue_size': 1000, 'receive_queue_size': 1000}
+
+--- Ending RF packet sending performance test ---
+PASSED        [ 83%]
+tests/src/managers/test_rf_manager.py::test_packet_receiving 
+--- Starting RF packet receiving performance test ---
+
+RF Packet Receiving Performance:
+Total packets received: 1000
+Total data received: 58.59 KB
+Total time: 4.4919 seconds
+Throughput: 104.36 kbps
+Average time per packet: 4.49 ms
+Packets per second: 222.63
+Mock RFM69 stats: {'packets_sent': 0, 'packets_received': 1000, 'bytes_sent': 0, 'bytes_received': 60000, 'send_queue_size': 0, 'receive_queue_size': 0}
+
+--- Ending RF packet receiving performance test ---
+PASSED      [ 91%]
+tests/src/managers/test_rf_manager.py::test_end_to_end_transmission 
+--- Starting end-to-end RF transmission test ---
+
+End-to-End RF Transmission Performance:
+Total audio frames: 100
+Complete frames decoded: 98
+Total packets sent: 283
+Total packets received: 283
+Raw audio size: 187.50 KB
+Encoded size: 12.51 KB (compression ratio: 14.99x)
+Decoded audio size: 185.62 KB
+Total time: 2.6102 seconds
+Throughput: 38.34 kbps
+Packets per second: 108.42
+
+--- Ending end-to-end RF transmission test ---
+PASSED [100%]
+
+============================= 12 passed in 14.92s ==============================

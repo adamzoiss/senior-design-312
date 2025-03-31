@@ -40,7 +40,7 @@ classDiagram
         - output_device_index: int
         - input_stream: pyaudio.Stream
         - output_stream: pyaudio.Stream
-        - encryptor: CryptoManager
+        - crypto_manager: CryptoManager
         - thread_manager: ThreadManager
         - logger: logging
         + __init__(thread_manager, frame_size, format, channels, sample_rate, in_device_index, out_device_index)

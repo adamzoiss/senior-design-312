@@ -60,7 +60,7 @@ class BaseAudioManager:
     output_stream : pyaudio.Stream or None
         Stream object for audio output.
 
-    encryptor : CryptoManager
+    crypto_manager : CryptoManager
         Instance of the CryptoManager for encryption and decryption.
     """
 
@@ -96,8 +96,8 @@ class BaseAudioManager:
         self.input_stream = None
         self.output_stream = None
 
-        # Initialize the encryptor
-        self.encryptor = CryptoManager()
+        # Initialize the crypto_manager
+        self.crypto_manager = CryptoManager()
 
         self.volume = 100  # Volume in %
         self.thread_manager = thread_manager
@@ -148,6 +148,48 @@ class BaseAudioManager:
         """
         # Terminate the PyAudio session
         self.audio.terminate()
+
+    def set_audio_processing(
+        self,
+        enable_normalization=None,
+        enable_noise_gate=None,
+        target_rms=None,
+        noise_gate_threshold=None,
+        smoothing_factor=None,
+    ):
+        """
+        Configure audio processing parameters.
+
+        Parameters
+        ----------
+        enable_normalization : bool, optional
+            Enable or disable audio normalization.
+        enable_noise_gate : bool, optional
+            Enable or disable noise gate.
+        target_rms : int, optional
+            Target RMS value for normalization.
+        noise_gate_threshold : int, optional
+            RMS threshold below which audio is considered noise.
+        smoothing_factor : float, optional
+            Factor for smoothing normalization (0-1, higher = smoother).
+        """
+        if enable_normalization is not None:
+            self.enable_normalization = enable_normalization
+        if enable_noise_gate is not None:
+            self.enable_noise_gate = enable_noise_gate
+        if target_rms is not None:
+            self.target_rms = target_rms
+        if noise_gate_threshold is not None:
+            self.noise_gate_threshold = noise_gate_threshold
+        if smoothing_factor is not None:
+            # Clamp between 0 and 1
+            self.smoothing_factor = min(max(smoothing_factor, 0.0), 1.0)
+
+        self.logger.info(
+            f"\n\tAudio processing updated: normalization={self.enable_normalization}, "
+            f"\tnoise_gate={self.enable_noise_gate}, target_rms={self.target_rms}, "
+            f"\tnoise_threshold={self.noise_gate_threshold}, smoothing={self.smoothing_factor}"
+        )
 
     def open_input_stream(self):
         """
@@ -300,48 +342,6 @@ class BaseAudioManager:
             self.output_stream.write(data)
         except Exception as e:
             self.logger.error(f"Exception: [{e}]")
-
-    def set_audio_processing(
-        self,
-        enable_normalization=None,
-        enable_noise_gate=None,
-        target_rms=None,
-        noise_gate_threshold=None,
-        smoothing_factor=None,
-    ):
-        """
-        Configure audio processing parameters.
-
-        Parameters
-        ----------
-        enable_normalization : bool, optional
-            Enable or disable audio normalization.
-        enable_noise_gate : bool, optional
-            Enable or disable noise gate.
-        target_rms : int, optional
-            Target RMS value for normalization.
-        noise_gate_threshold : int, optional
-            RMS threshold below which audio is considered noise.
-        smoothing_factor : float, optional
-            Factor for smoothing normalization (0-1, higher = smoother).
-        """
-        if enable_normalization is not None:
-            self.enable_normalization = enable_normalization
-        if enable_noise_gate is not None:
-            self.enable_noise_gate = enable_noise_gate
-        if target_rms is not None:
-            self.target_rms = target_rms
-        if noise_gate_threshold is not None:
-            self.noise_gate_threshold = noise_gate_threshold
-        if smoothing_factor is not None:
-            # Clamp between 0 and 1
-            self.smoothing_factor = min(max(smoothing_factor, 0.0), 1.0)
-
-        self.logger.info(
-            f"Audio processing updated: normalization={self.enable_normalization}, "
-            f"noise_gate={self.enable_noise_gate}, target_rms={self.target_rms}, "
-            f"noise_threshold={self.noise_gate_threshold}, smoothing={self.smoothing_factor}"
-        )
 
     def encode(self, data: bytes) -> bytes:
         """

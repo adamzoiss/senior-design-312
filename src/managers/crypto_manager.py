@@ -41,6 +41,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import serialization, hashes
 
 from src.utils.utils import *
+from src.utils.constants import PACKET_ENCRYPTION, DATA_ENCRYPTION
 from src.logging.logger import *
 
 
@@ -79,13 +80,19 @@ class CryptoManager:
             console_logging=EN_CONSOLE_LOGGING,
         )
 
+        # Setting up the RSA keys
         self.key_file = str(get_proj_root()) + key_file
         self.private_key_file = str(get_proj_root()) + private_key_file
         self.public_key_file = str(get_proj_root()) + public_key_file
 
+        # Setting up the AES key and IV
         self.key, self.iv = self._load_key_iv()
         self.public_key, self.private_key = self._load_rsa_keys()
         self.cipher = Cipher(algorithms.AES(self.key), modes.CFB(self.iv))
+
+        # Dictates if Encyption is enabled or not
+        self.penc_en = PACKET_ENCRYPTION
+        self.denc_en = DATA_ENCRYPTION
 
         self.logger.info("CryptoManager initialized")
 

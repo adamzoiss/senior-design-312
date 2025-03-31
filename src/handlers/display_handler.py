@@ -57,7 +57,7 @@ class DisplayHandler(Menu, Mode):
     def __del__(self):
         del self.display
 
-    def get_screen(self, screen: Screen, options=None):
+    def get_screen(self, screen: Screen, *args):
         """
         Sets the current screen and draws its content.
 
@@ -80,7 +80,7 @@ class DisplayHandler(Menu, Mode):
             self.CURRENT_SCREEN.draw_screen()
         elif screen is Settings:
             self.CURRENT_SCREEN = self.SETTINGS
-            self.CURRENT_SCREEN.draw_screen(en_enc=options)
+            self.CURRENT_SCREEN.draw_screen(*args)
         else:
             self.logger.warning(
                 f"Tried to access a non-existent screen: |{screen}|."

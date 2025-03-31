@@ -67,17 +67,24 @@ class Settings(Screen):
             The display object to draw on.
         """
         super().__init__(display)
-        self.SELECTIONS["ENC"] = 0
+        self.SELECTIONS["PENC"] = 0
+        self.SELECTIONS["DENC"] = 1
 
-    def draw_screen(self, en_enc=ENCRYPTION):
+    def draw_screen(self, en_penc=PACKET_ENCRYPTION, en_denc=DATA_ENCRYPTION):
         """
         Draws the settings screen.
         """
         self.display.draw_text("SETTINGS", x=5, y=2, font_size=12)
         self.display.draw_text(
-            f"ENC ({'ON' if en_enc else 'OFF'})",
+            f"PENC {'ON' if en_penc else 'OFF'}",
             x=5,
             y=20,
+            font_size=10,
+        )
+        self.display.draw_text(
+            f"DENC {'ON' if en_denc else 'OFF'}",
+            x=5,
+            y=35,
             font_size=10,
         )
 
