@@ -4,10 +4,42 @@
 
 ## Detailed Flowchart Views
 
+### Overall design
+```mermaid
+%%{init: {'theme': 'default', 'themeVariables': { 'fontSize': '18px', 'fontFamily': 'arial', 'edgeLabelBackground':'#ffffff'}, 'flowchart': {'diagramPadding': 40, 'curve': 'linear'}} }%%
+flowchart LR
+    %% Increase arrow thickness
+    linkStyle default stroke-width:3px;
+
+    subgraph sender["Audio Transmission"]
+        record["Record Audio"] --> process["Process Audio"]
+        process --> encode["Encode Audio"]
+        encode --> encrypt["Encrypt Data"]
+        encrypt --> send["Send Data"]
+    end
+
+    subgraph receiver["Reception and Playback"]
+        receive["Receive Data"] --> decrypt["Decrypt Data"]
+        decrypt --> decode["Decode Audio"]
+        decode --> playback["Playback Audio"]
+    end
+
+    sender <==> receiver
+
+    classDef default fill:#f0f8ff,stroke:#333,stroke-width:2px;
+    classDef process fill:#e6ffe6,stroke:#333,stroke-width:2px;
+    classDef encrypt fill:#ffe6e6,stroke:#333,stroke-width:2px;
+
+    class record,process,encode,encrypt,send,receive,decrypt,decode,playback process;
+```
+
 ### Audio Processing Detail
 ```mermaid
 %%{init: {'theme': 'default', 'themeVariables': { 'fontSize': '18px', 'fontFamily': 'arial', 'edgeLabelBackground':'#ffffff', 'tertiaryColor': '#f5f5f5'}, 'flowchart': {'diagramPadding': 40, 'curve': 'linear'}} }%%
 flowchart TB
+    %% Increase arrow thickness
+    linkStyle default stroke-width:3px;
+    
     audioIn["Input Audio"] --> rmsCalc["Calculate RMS Level"]
     rmsCalc --> noiseGate{"RMS > Noise Threshold?"}
     noiseGate -->|"No"| mute["Mute Output"]
@@ -31,6 +63,9 @@ flowchart TB
 ```mermaid
 %%{init: {'theme': 'default', 'themeVariables': { 'fontSize': '18px', 'fontFamily': 'arial', 'edgeLabelBackground':'#ffffff'}, 'flowchart': {'diagramPadding': 40, 'curve': 'linear'}} }%%
 flowchart TB
+    %% Increase arrow thickness
+    linkStyle default stroke-width:3px;
+    
     audioFrame["Encoded Audio Frame"] --> sizeCheck{"Size > Max Packet Size (60 bytes)"}
     
     sizeCheck -->|"No"| singlePacket["Create Single Packet"]
@@ -70,6 +105,9 @@ flowchart TB
 ```mermaid
 %%{init: {'theme': 'default', 'themeVariables': { 'fontSize': '18px', 'fontFamily': 'arial', 'edgeLabelBackground':'#ffffff'}, 'flowchart': {'diagramPadding': 40, 'curve': 'linear'}} }%%
 flowchart TB
+    %% Increase arrow thickness
+    linkStyle default stroke-width:3px;
+    
     receive["Receive Packet"] --> decrypt["Decrypt Packet"]
     
     decrypt --> headerCheck{"Is Fragment?"}

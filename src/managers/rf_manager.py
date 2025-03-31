@@ -105,8 +105,10 @@ class RFManager:
             packet = self.rfm69.receive(timeout=None)
             # Ensure the packet has data
             if packet is not None:
+                # Check if encryption is enabled, if so decrypt the packet data
+                if self.audio_manager.crypto_manager.denc_en:
+                    packet = self.audio_manager.crypto_manager.decrypt(packet)
                 # Place the packet in the queue
-                # self.logger.debug(f"PACKET [{packet.hex()}]")
                 self.packet_queue.put(packet)
 
     def _init_gpio_interrupts(self):
@@ -201,10 +203,14 @@ class RFManager:
                 pkt_buffer = pkt_buffer + (b"\x00" * req_padding_len)
 
                 for i in range(0, req_pkts):
+                    # Get the packet data
                     pkt = pkt_buffer[i * PACKET_SIZE : (i + 1) * PACKET_SIZE]
+                    # Encrypt the packet if encryption is enabled
+                    if self.audio_manager.crypto_manager.denc_en:
+                        pkt = self.audio_manager.crypto_manager.encrypt(pkt)
+                    # Send the packet
                     self.rfm69.send(pkt)
-                    # Since the RPI 5 compute time is so fast, we need to
-                    # add a small delay to ensure the packets are received.
+                    # Delay to allow the transceiver to process the packet
                     sleep_microseconds(1400)
             except Exception as e:
                 self.logger.error(f"Packet error: {e}")

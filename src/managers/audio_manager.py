@@ -56,7 +56,7 @@ class AudioManager(BaseAudioManager):
     output_stream : pyaudio.Stream or None
         Stream object for audio output.
 
-    encryptor : CryptoManager
+    crypto_manager : CryptoManager
         Instance of the CryptoManager for encryption and decryption.
     """
 
@@ -130,8 +130,8 @@ class AudioManager(BaseAudioManager):
                 data = audio_data.tobytes()
                 ###############################################################
                 # Encrypt --> decrypt --> write to output stream
-                encrypted_data = self.encryptor.encrypt(data)
-                decrypted_data = self.encryptor.decrypt(encrypted_data)
+                encrypted_data = self.crypto_manager.encrypt(data)
+                decrypted_data = self.crypto_manager.decrypt(encrypted_data)
                 self.output_stream.write(decrypted_data)
         except KeyboardInterrupt:
             self.logger.info("\nMonitoring stopped.\n")
@@ -222,7 +222,7 @@ class AudioManager(BaseAudioManager):
                     data = self.input_stream.read(
                         self.CHUNK, exception_on_overflow=False
                     )
-                    encrypted_data = self.encryptor.encrypt(data)
+                    encrypted_data = self.crypto_manager.encrypt(data)
                     frames.append(encrypted_data)
                     if monitoring:
                         self.output_stream.write(data)
@@ -280,8 +280,8 @@ class AudioManager(BaseAudioManager):
         with open(input_file_path, "rb") as f:
             audio_data = f.read()
 
-        encryptor = CryptoManager()
-        encrypted_data = encryptor.encrypt(audio_data)
+        crypto_manager = CryptoManager()
+        encrypted_data = crypto_manager.encrypt(audio_data)
 
         with open(output_file_path, "wb") as f:
             f.write(encrypted_data)
@@ -329,7 +329,7 @@ class AudioManager(BaseAudioManager):
                 encrypted_data = encrypted_file.read()
 
             # Decrypt the audio data
-            decrypted_data = self.encryptor.decrypt(encrypted_data)
+            decrypted_data = self.crypto_manager.decrypt(encrypted_data)
 
             # Write the decrypted data to a WAV file
             with wave.open(output_file, "wb") as wf:
@@ -393,7 +393,9 @@ class AudioManager(BaseAudioManager):
                 # Read and decrypt frames chunk by chunk
                 for _ in range(0, num_frames, self.CHUNK):
                     encrypted_chunk = wf.readframes(self.CHUNK)
-                    decrypted_chunk = self.encryptor.decrypt(encrypted_chunk)
+                    decrypted_chunk = self.crypto_manager.decrypt(
+                        encrypted_chunk
+                    )
                     decrypted_frames.append(decrypted_chunk)
 
             # Write the decrypted frames to a new WAV file
