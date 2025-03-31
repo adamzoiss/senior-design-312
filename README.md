@@ -8,8 +8,27 @@ __Share Point Quick Link:__ [Project SharePoint](https://fsu-my.sharepoint.com/p
 ---
 
 __Table of Contents__
-[TOC]
 
+- [Project Description](#project-description)
+  - [Overall Processes](#overall-processes)
+  - [Audio Processing](#audio-processing)
+  - [Packet Fragmentation and Transmission Process](#packet-fragmentation-and-transmission-process)
+  - [Packet Reassembly Process on Receiver](#packet-reassembly-process-on-receiver)
+- [Materials](#materials)
+- [RPI Setup](#rpi-setup)
+  - [Flashing an OS](#flashing-an-os)
+  - [How to SSH to rpi](#how-to-ssh-to-rpi)
+  - [Driver Installation](#driver-installation)
+- [Coding Environment](#coding-environment)
+  - [Running the Code](#running-the-code)
+- [Creating a daemon](#creating-a-daemon)
+- [Using Git](#using-git)
+  - [Setting up Git](#setting-up-git)
+  - [Git usage](#git-usage)
+- [Documenting Python Code](#documenting-python-code)
+  - [Code Documentation](#code-documentation)
+  - [Type Hinting Guide](#type-hinting-guide)
+- [Contributors](#contributors)
 ---
 __Resources:__
 
