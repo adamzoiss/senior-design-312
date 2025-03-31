@@ -14,7 +14,7 @@ __Table of Contents__
   - [Audio Processing](#audio-processing)
   - [Packet Fragmentation and Transmission Process](#packet-fragmentation-and-transmission-process)
   - [Packet Reassembly Process on Receiver](#packet-reassembly-process-on-receiver)
-- [Materials](#materials)
+  - [Materials](#materials)
 - [RPI Setup](#rpi-setup)
   - [Flashing an OS](#flashing-an-os)
   - [How to SSH to rpi](#how-to-ssh-to-rpi)
@@ -183,9 +183,6 @@ flowchart TB
 ```
 
 
-
-<!-- <details>
-<summary>Click to expand test output</summary> -->
 
 ### Materials:
 
