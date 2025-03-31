@@ -76,13 +76,13 @@ class Settings(Screen):
         """
         self.display.draw_text("SETTINGS", x=5, y=2, font_size=12)
         self.display.draw_text(
-            f"P-ENC {'ON' if en_penc else 'OFF'}",
+            f"PENC {'ON' if en_penc else 'OFF'}",
             x=5,
             y=20,
             font_size=10,
         )
         self.display.draw_text(
-            f"D-ENC {'ON' if en_denc else 'OFF'}",
+            f"DENC {'ON' if en_denc else 'OFF'}",
             x=5,
             y=35,
             font_size=10,
