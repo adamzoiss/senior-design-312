@@ -55,7 +55,7 @@ SPI_MOSI = 0  # GPIO pin for MOSI - pin 19
 G0 = 25  # GPIO pin for G0 - pin 22
 RST = 26  # GPIO pin for RST - pin 37
 
-RADIO_FREQ_MHZ = 433.0  # Frequency of the radio in Mhz. Must match your
+RADIO_FREQ_MHZ = 915.0  # Frequency of the radio in Mhz. Must match your
 # Optionally set an encryption key (16 byte AES key). MUST match both
 # on the transmitter and receiver (or be set to None to disable/the default).
 ENCRYPTION_KEY = (
