@@ -47,6 +47,7 @@ class KeyCreator:
         drive_options = [Path(f"{letter}:\\") for letter in ascii_uppercase]    #cycle through connected USB devices, store them in drive_options
 
         required_files = ["aes.txt", "public_key.pem", "private_key.pem"]
+        hybrid_files = ["hybrid_private.pem", "hybrid_public.pem", "hybrid.txt"]
 
         # First check USB drives
         for drive in drive_options:     #cycle through all USB devices
@@ -66,8 +67,11 @@ class KeyCreator:
         system_keys_exist = all((self.keys_dir / f).exists() for f in required_files)
         if system_keys_exist:
             self.logger.info("No USB keys found, using existing system keys")
-            # Create hybrid keys using system keys
-            self.create_hybrid_keys(force=True)
+            # Check if hybrid keys exist
+            hybrid_keys_exist = all((self.keys_dir / f).exists() for f in hybrid_files)
+            if not hybrid_keys_exist:
+                self.logger.info("Creating hybrid keys from system keys")
+                self.create_hybrid_keys(force=True)
             return None
         
         if missing:
@@ -79,8 +83,8 @@ class KeyCreator:
 
     def create_hybrid_keys(self, force=False):
         """
-        Create hybrid encryption keys using existing AES key.
-        Creates new RSA key pair and encrypts AES key with the public key.
+        Create hybrid encryption keys using existing keys.
+        Creates hybrid keys by encrypting the AES key with the RSA public key.
         
         Parameters
         ----------
@@ -97,52 +101,19 @@ class KeyCreator:
             return
 
         try:
-            # First try to use existing system keys
-            try:
-                # Read existing AES key and IV
-                with open(self.keys_dir / "aes.txt", "r") as f:
-                    aes_key = bytes.fromhex(f.readline().strip())
-                    iv = bytes.fromhex(f.readline().strip())
-                
-                # Read existing RSA keys
-                with open(self.keys_dir / "public_key.pem", "rb") as f:
-                    public_key = serialization.load_pem_public_key(f.read())
-                with open(self.keys_dir / "private_key.pem", "rb") as f:
-                    private_key = serialization.load_pem_private_key(f.read(), password=None)
-                
-                self.logger.info("Using existing system keys for hybrid key creation")
-                
-            except FileNotFoundError:
-                # If system keys don't exist, generate new ones
-                self.logger.info("Generating new keys for hybrid encryption")
-                # Generate new RSA key pair for hybrid encryption
-                private_key = rsa.generate_private_key(
-                    public_exponent=65537,
-                    key_size=4096
-                )
-                public_key = private_key.public_key()
-                
-                # Generate new AES key and IV
-                aes_key = os.urandom(32)  # 256-bit AES key
-                iv = os.urandom(16)       # 128-bit IV
-                
-                # Save the new AES key and IV
-                with open(self.keys_dir / "aes.txt", "w") as f:
-                    f.write(f"{aes_key.hex()}\n{iv.hex()}\n")
-                
-                # Save the new RSA keys
-                with open(self.keys_dir / "public_key.pem", "wb") as f:
-                    f.write(public_key.public_bytes(
-                        encoding=serialization.Encoding.PEM,
-                        format=serialization.PublicFormat.SubjectPublicKeyInfo
-                    ))
-                with open(self.keys_dir / "private_key.pem", "wb") as f:
-                    f.write(private_key.private_bytes(
-                        encoding=serialization.Encoding.PEM,
-                        format=serialization.PrivateFormat.PKCS8,
-                        encryption_algorithm=serialization.NoEncryption()
-                    ))
-
+            # Read AES key and IV
+            with open(self.keys_dir / "aes.txt", "r") as f:
+                aes_key = bytes.fromhex(f.readline().strip())
+                iv = bytes.fromhex(f.readline().strip())
+            
+            # Read RSA keys
+            with open(self.keys_dir / "public_key.pem", "rb") as f:
+                public_key = serialization.load_pem_public_key(f.read())
+            with open(self.keys_dir / "private_key.pem", "rb") as f:
+                private_key = serialization.load_pem_private_key(f.read(), password=None)
+            
+            self.logger.info("Creating hybrid keys")
+            
             # Save hybrid RSA private key
             with open(hybrid_private_path, "wb") as f:
                 f.write(private_key.private_bytes(
@@ -177,6 +148,9 @@ class KeyCreator:
             self.logger.info(f"- Hybrid public key: {hybrid_public_path}")
             self.logger.info(f"- Encrypted AES key: {hybrid_encrypted_aes_path}")
 
+        except FileNotFoundError as e:
+            self.logger.error(f"Required keys not found: {e}")
+            raise FileNotFoundError("Required keys must exist to create hybrid keys")
         except Exception as e:
             self.logger.error(f"Error creating hybrid keys: {e}")
             raise
@@ -186,7 +160,6 @@ if __name__ == "__main__":
     creator = KeyCreator()
     try:
         creator.verify_base_keys_exist()
-        creator.create_hybrid_keys(force=True)
-        print("Hybrid key creation completed successfully.")
+        print("Key verification and hybrid key creation completed successfully.")
     except Exception as e:
         print(f"Error: {e}") 
