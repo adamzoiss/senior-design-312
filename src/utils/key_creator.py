@@ -27,6 +27,13 @@ class KeyCreator:
             console_logging=EN_CONSOLE_LOGGING,
         )
 
+        # Initialize keys during creation
+        try:
+            self.verify_base_keys_exist()
+        except Exception as e:
+            self.logger.error(f"Failed to initialize keys: {e}")
+            raise
+
     def verify_base_keys_exist(self, missing = True):
         """
         Search USB drives and copy required key files to the Keys folder.
@@ -148,6 +155,10 @@ class KeyCreator:
             self.logger.info(f"- Hybrid public key: {hybrid_public_path}")
             self.logger.info(f"- Encrypted AES key: {hybrid_encrypted_aes_path}")
 
+            # Verify hybrid keys were created successfully
+            if not all(p.exists() for p in [hybrid_private_path, hybrid_public_path, hybrid_encrypted_aes_path]):
+                raise FileNotFoundError("Failed to create one or more hybrid key files")
+
         except FileNotFoundError as e:
             self.logger.error(f"Required keys not found: {e}")
             raise FileNotFoundError("Required keys must exist to create hybrid keys")
@@ -159,7 +170,6 @@ class KeyCreator:
 if __name__ == "__main__":
     creator = KeyCreator()
     try:
-        creator.verify_base_keys_exist()
         print("Key verification and hybrid key creation completed successfully.")
     except Exception as e:
         print(f"Error: {e}") 
