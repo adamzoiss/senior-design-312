@@ -31,6 +31,7 @@ class KeyCreator:
         """
         Search USB drives and copy required key files to the Keys folder.
         If no USB is found, check if keys exist in the system.
+        After getting keys from either source, create hybrid keys.
 
         Parameters
         ----------
@@ -57,12 +58,16 @@ class KeyCreator:
                     dest  = self.keys_dir / file
                     shutil.copy2(src, dest)
                 self.logger.info("Successfully copied key files from USB")
+                # Create hybrid keys after getting keys from USB
+                self.create_hybrid_keys(force=True)
                 return None
         
         # If no USB keys found, check system keys
         system_keys_exist = all((self.keys_dir / f).exists() for f in required_files)
         if system_keys_exist:
             self.logger.info("No USB keys found, using existing system keys")
+            # Create hybrid keys using system keys
+            self.create_hybrid_keys(force=True)
             return None
         
         if missing:
