@@ -90,8 +90,8 @@ class KeyCreator:
 
     def create_hybrid_keys(self, force=False):
         """
-        Create hybrid encryption keys using existing keys.
-        Creates hybrid keys by encrypting the AES key with the RSA public key.
+        Create hybrid encryption keys using existing AES key.
+        Creates new RSA key pair and encrypts AES key with the public key.
         
         Parameters
         ----------
@@ -108,16 +108,17 @@ class KeyCreator:
             return
 
         try:
-            # Read AES key and IV
+            # Read existing AES key and IV
             with open(self.keys_dir / "aes.txt", "r") as f:
                 aes_key = bytes.fromhex(f.readline().strip())
                 iv = bytes.fromhex(f.readline().strip())
-            
-            # Read RSA keys
-            with open(self.keys_dir / "public_key.pem", "rb") as f:
-                public_key = serialization.load_pem_public_key(f.read())
-            with open(self.keys_dir / "private_key.pem", "rb") as f:
-                private_key = serialization.load_pem_private_key(f.read(), password=None)
+
+            # Generate new RSA key pair for hybrid encryption
+            private_key = rsa.generate_private_key(
+                public_exponent=65537,
+                key_size=4096
+            )
+            public_key = private_key.public_key()
             
             self.logger.info("Creating hybrid keys")
             
