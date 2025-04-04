@@ -69,15 +69,15 @@ class DisplayHandler(Menu, Mode):
         if screen is Menu:
             # Draw menu screen
             self.CURRENT_SCREEN = self.MENU
-            self.CURRENT_SCREEN.draw_screen()
+            self.CURRENT_SCREEN.draw_screen(*args)
         elif screen is Mode:
             # Draw mode screen
             self.CURRENT_SCREEN = self.MODE
-            self.CURRENT_SCREEN.draw_screen()
+            self.CURRENT_SCREEN.draw_screen(*args)
         elif screen is Debug:
             # Draw debug screen
             self.CURRENT_SCREEN = self.DEBUG
-            self.CURRENT_SCREEN.draw_screen()
+            self.CURRENT_SCREEN.draw_screen(*args)
         elif screen is Settings:
             self.CURRENT_SCREEN = self.SETTINGS
             self.CURRENT_SCREEN.draw_screen(*args)
