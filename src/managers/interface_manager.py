@@ -245,7 +245,7 @@ class InterfaceManager(GPIOHandler):
                         self.position
                         == self.nav.CURRENT_SCREEN.SELECTIONS["RSA"]
                     ):
-                        if not self.audio_man.crypto_manager.mode_aes:
+                        if not self.audio_man.crypto_manager.mode_rsa:
                             self.audio_man.crypto_manager.mode_aes = False
                             self.audio_man.crypto_manager.mode_rsa = True
                             self.audio_man.crypto_manager.mode_hybrid = False
@@ -254,7 +254,7 @@ class InterfaceManager(GPIOHandler):
                         self.position
                         == self.nav.CURRENT_SCREEN.SELECTIONS["HYBRID"]
                     ):
-                        if not self.audio_man.crypto_manager.mode_aes:
+                        if not self.audio_man.crypto_manager.mode_hybrid:
                             self.audio_man.crypto_manager.mode_aes = False
                             self.audio_man.crypto_manager.mode_rsa = False
                             self.audio_man.crypto_manager.mode_hybrid = True
