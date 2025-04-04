@@ -1,19 +1,15 @@
 # Senior Design Project - Team 312
 
-
-
-
-__Share Point Quick Link:__ [Project SharePoint](https://fsu-my.sharepoint.com/personal/amw21i_fsu_edu/_layouts/15/Doc.aspx?sourcedoc={c8d6e6cb-04f5-4a5c-a4a4-ac70581ecfba}&action=edit&wd=target%28Class%20Handouts.one%7C43749e4e-c570-4688-8d40-703e8b013bf2%2FSenior%20Design%20Projects%7C01b6a98f-3880-41ca-834b-d67c770890d6%2F%29&wdorigin=NavigationUrl)
+**Share Point Quick Link:** [Project SharePoint](https://fsu-my.sharepoint.com/personal/amw21i_fsu_edu/_layouts/15/Doc.aspx?sourcedoc={c8d6e6cb-04f5-4a5c-a4a4-ac70581ecfba}&action=edit&wd=target%28Class%20Handouts.one%7C43749e4e-c570-4688-8d40-703e8b013bf2%2FSenior%20Design%20Projects%7C01b6a98f-3880-41ca-834b-d67c770890d6%2F%29&wdorigin=NavigationUrl)
 
 ---
 
-__Table of Contents__
+**Table of Contents**
 
 - [Project Description](#project-description)
   - [Overall Processes](#overall-processes)
-  - [Audio Processing](#audio-processing)
-  - [Packet Fragmentation and Transmission Process](#packet-fragmentation-and-transmission-process)
-  - [Packet Reassembly Process on Receiver](#packet-reassembly-process-on-receiver)
+  - [Audio Processing and Transmission](#audio-processing-and-transmission-of-data)
+  - [Encryption/Decryption Information](#how-the-encryption-and-decryption-works)
   - [Materials](#materials)
 - [RPI Setup](#rpi-setup)
   - [Flashing an OS](#flashing-an-os)
@@ -29,8 +25,10 @@ __Table of Contents__
   - [Code Documentation](#code-documentation)
   - [Type Hinting Guide](#type-hinting-guide)
 - [Contributors](#contributors)
+
 ---
-__Resources:__
+
+**Resources:**
 
 [PEP 8 – Style Guide for Python Code](https://peps.python.org/pep-0008/#introduction) - Guideline for how to code in Python
 
@@ -47,6 +45,7 @@ __Resources:__
 The purpose of the project is to have a hardware implementation for voice encryption. The approach taken was to use two Raspberry Pi 5's that are capable of encrypting and decrypting audio streams using AES or RSA. The encrypted stream is then sent to another Raspberry Pi via the RFM69 915MHz transceiver where it is then decrypted and played back. The functionality is like that of a rudimentary military grade radio (encrypted walkie talkie).
 
 ### Overall Processes:
+
 To record the audio a button on the device is pressed, starting a thread to handle recording the audio and then transmitting it as shown in the diagram. The receiving device, upon receiving the RF signal and start sequence will start playing back the audio.
 
 ```mermaid
@@ -77,122 +76,26 @@ flowchart LR
     class record,process,encode,encrypt,send,receive,decrypt,decode,playback process;
 ```
 
-### Audio Processing:
-The audio processing works to smooth the signal and make it so that if the user is far from the microphone, an audible sound is still played on the device.
+### Audio Processing and Transmission of data:
 
-```mermaid
-%%{init: {'theme': 'default', 'themeVariables': { 'fontSize': '18px', 'fontFamily': 'arial', 'edgeLabelBackground':'#ffffff', 'tertiaryColor': '#f5f5f5'}, 'flowchart': {'diagramPadding': 40, 'curve': 'linear'}} }%%
-flowchart TB
-    %% Increase arrow thickness
-    linkStyle default stroke-width:3px;
-    
-    audioIn["Input Audio"] --> rmsCalc["Calculate RMS Level"]
-    rmsCalc --> noiseGate{"RMS > Noise Threshold?"}
-    noiseGate -->|"No"| mute["Mute Output"]
-    noiseGate -->|"Yes"| normalize["Apply Normalization"]
-    normalize --> gainSmooth["Smooth Gain Changes"]
-    gainSmooth --> volumeAdjust["Apply Volume Control"]
-    mute --> output["Output Audio"]
-    volumeAdjust --> output
-    
-    classDef default fill:#f9f0ff,stroke:#333,stroke-width:2px;
-    classDef decision fill:#fffacd,stroke:#333,stroke-width:2px;
-    classDef output fill:#e6ffe6,stroke:#333,stroke-width:2px;
-    
-    class noiseGate decision;
-    class output output;
-```
+[Diagrams and information](docs/design_flow_diagrams.md)
 
-### Packet Fragmentation and Transmission Process
-Since the RF transceiver is limited in it's transmission speed, the audio must be encoded instead of sent raw, this reduces the amount of data that is needed to be transferred.
+### How the encryption and decryption works:
 
-```mermaid
-%%{init: {'theme': 'default', 'themeVariables': { 'fontSize': '18px', 'fontFamily': 'arial', 'edgeLabelBackground':'#ffffff'}, 'flowchart': {'diagramPadding': 40, 'curve': 'linear'}} }%%
-flowchart TB
-    %% Increase arrow thickness
-    linkStyle default stroke-width:3px;
-    
-    audioFrame["Encoded Audio Frame"] --> sizeCheck{"Size > Max Packet Size (60 bytes)"}
-    
-    sizeCheck -->|"No"| singlePacket["Create Single Packet"]
-    sizeCheck -->|"Yes"| fragment["Fragment Data"]
-    
-    fragment --> packetHeader1["Add Packet 1 Header"]
-    fragment --> packetHeader2["Add Packet 2 Header"]
-    fragment --> morePackets["...Additional Packets..."]
-    
-    packetHeader1 --> encrypt1["Encrypt Packet 1"]
-    packetHeader2 --> encrypt2["Encrypt Packet 2"] 
-    morePackets --> encryptMore["Encrypt Additional Packets"]
-    
-    singlePacket --> encryptSingle["Encrypt Single Packet"]
-    
-    encrypt1 --> txQueue["Transmission Queue"]
-    encrypt2 --> txQueue
-    encryptMore --> txQueue
-    encryptSingle --> txQueue
-    
-    txQueue --> send["Send Packets Sequentially"]
-    
-    
-    classDef default fill:#f0f8ff,stroke:#333,stroke-width:2px;
-    classDef decision fill:#fffacd,stroke:#333,stroke-width:2px;
-    classDef process fill:#e6ffe6,stroke:#333,stroke-width:2px;
-    classDef encrypt fill:#ffe6e6,stroke:#333,stroke-width:2px;
-    
-    class sizeCheck decision;
-    class encrypt1,encrypt2,encryptMore,encryptSingle encrypt;
-    class fragment,singlePacket,txQueue process;
-```
-
-### Packet Reassembly Process on Receiver
-Since the audio data is broken up while being sent, it must be reassembled before it can be played back.
-
-```mermaid
-%%{init: {'theme': 'default', 'themeVariables': { 'fontSize': '18px', 'fontFamily': 'arial', 'edgeLabelBackground':'#ffffff'}, 'flowchart': {'diagramPadding': 40, 'curve': 'linear'}} }%%
-flowchart TB
-    %% Increase arrow thickness
-    linkStyle default stroke-width:3px;
-    
-    receive["Receive Packet"] --> decrypt["Decrypt Packet"]
-    
-    decrypt --> headerCheck{"Is Fragment?"}
-    
-    headerCheck -->|"No"| processComplete["Process Complete Packet"]
-    headerCheck -->|"Yes"| bufferStorage["Store in Fragment Buffer"]
-    
-    bufferStorage --> completeCheck{"All Fragments Received?"}
-    
-    completeCheck -->|"No"| waitMore["Wait for More Fragments"]
-    completeCheck -->|"Yes"| reassemble["Reassemble Complete Data"]
-    
-    waitMore --> receive
-    
-    reassemble --> processComplete
-    
-    processComplete --> audioDecoding["Decode Audio"]
-    
-    classDef default fill:#f0f8ff,stroke:#333,stroke-width:2px;
-    classDef decision fill:#fffacd,stroke:#333,stroke-width:2px;
-    classDef process fill:#e6ffe6,stroke:#333,stroke-width:2px;
-    classDef decrypt fill:#ffe6e6,stroke:#333,stroke-width:2px;
-    
-    class headerCheck,completeCheck decision;
-    class decrypt decrypt;
-    class reassemble,processComplete,bufferStorage process;
-```
-
-
+This design used AES 256, RSA 4096, and a hybrid method that is outlined below:
+[AES-256](docs/aes.md)
+[RSA-4096](docs/rsa.md)
 
 ### Materials:
 
-* [Raspberry Pi 5](https://www.adafruit.com/product/5813)
-* [RPI UPS](https://www.amazon.com/Geekworm-X1200-Raspberry-Shutdown-Detection/dp/B0CRYVC8C5/ref=sr_1_5?crid=3T93BCIOWTPNQ&dib=eyJ2IjoiMSJ9.DSS9mwB54EGjoH9xGkIHFd17faf9UodmdVZNEF_NOwU1_TtXE9s5ghDnBO93wSyNeB1lbRl8e1wEuyPHb3ZzxMwYsCVhmp-j85LuohlRSUfx-YZh10-CHeAW6Z2ln4s2YudasiG1aBX-cWL1VihQCH_vzZzjAtUG9teGnXM9BbOQCqw_GdSpZU175fsOAMTuqZAPb5n3mfgUwXqlgPdfhwnoqzu5ng3niiaieRxPhM2FF5Hz5nVOXCaIMCLdwqQHWaklxH1ObAC3PyNYaox4awEBOQx2zcOAy6-PPfX7jiT5Lc-Iv-FmTJBIp-wI4evsTNgZJfQ-FAyS--bPdEAYpfdK69StwQNbdMvML9t9LII.ysi9Ba5JT9anmJP7jrCq64x9GX5JekWu3_toRT-0F-U&dib_tag=se&keywords=rpi5+ups+geekworm&qid=1743437047&s=electronics&sprefix=rpi5+ups+geekworm%2Celectronics%2C111&sr=1-5)
-* [ANO Directional Navigation](https://www.adafruit.com/product/5001)
-* [RFM69HCW Transceiver](https://www.adafruit.com/product/3070)
-* [Voice Bonnet](https://www.adafruit.com/product/4757)
-* [OLED Display](https://www.amazon.com/dp/B0CHF7LHVT?ref=ppx_yo2ov_dt_b_fed_asin_title&th=1)
-* [Speaker](https://www.adafruit.com/product/4227)
+- [Raspberry Pi 5](https://www.adafruit.com/product/5813)
+- [RPI UPS](https://www.amazon.com/Geekworm-X1200-Raspberry-Shutdown-Detection/dp/B0CRYVC8C5/ref=sr_1_5?crid=3T93BCIOWTPNQ&dib=eyJ2IjoiMSJ9.DSS9mwB54EGjoH9xGkIHFd17faf9UodmdVZNEF_NOwU1_TtXE9s5ghDnBO93wSyNeB1lbRl8e1wEuyPHb3ZzxMwYsCVhmp-j85LuohlRSUfx-YZh10-CHeAW6Z2ln4s2YudasiG1aBX-cWL1VihQCH_vzZzjAtUG9teGnXM9BbOQCqw_GdSpZU175fsOAMTuqZAPb5n3mfgUwXqlgPdfhwnoqzu5ng3niiaieRxPhM2FF5Hz5nVOXCaIMCLdwqQHWaklxH1ObAC3PyNYaox4awEBOQx2zcOAy6-PPfX7jiT5Lc-Iv-FmTJBIp-wI4evsTNgZJfQ-FAyS--bPdEAYpfdK69StwQNbdMvML9t9LII.ysi9Ba5JT9anmJP7jrCq64x9GX5JekWu3_toRT-0F-U&dib_tag=se&keywords=rpi5+ups+geekworm&qid=1743437047&s=electronics&sprefix=rpi5+ups+geekworm%2Celectronics%2C111&sr=1-5)
+- [ANO Directional Navigation](https://www.adafruit.com/product/5001)
+- [RFM69HCW Transceiver](https://www.adafruit.com/product/3070)
+- [Voice Bonnet](https://www.adafruit.com/product/4757)
+- [OLED Display](https://www.amazon.com/dp/B0CHF7LHVT?ref=ppx_yo2ov_dt_b_fed_asin_title&th=1)
+- [Speaker](https://www.adafruit.com/product/4227)
+
 ---
 
 ## RPI Setup:
@@ -202,14 +105,15 @@ flowchart TB
 1. Download the [Raspberry PI imager](https://www.raspberrypi.com/software/)
 
 2. Select RPI 5 as device and Raspian 64-bit Lite as OS
-    2.1 - For all the drivers for this project, a non desktop version must be used.
+   2.1 - For all the drivers for this project, a non desktop version must be used.
 
 3. Customize settings before flashing
-    - Name the device (ex. rpi5-312)
-    - Set username (ex. team312)
-    - Set password (ex. password)
-    - Enable SSH in second tab
-    - Finally flash the SD card with the OS
+
+   - Name the device (ex. rpi5-312)
+   - Set username (ex. team312)
+   - Set password (ex. password)
+   - Enable SSH in second tab
+   - Finally flash the SD card with the OS
 
 4. Plug SD card in, power on
 
@@ -217,7 +121,7 @@ flowchart TB
 
 ### How to SSH to rpi:
 
-*This step is optional*
+_This step is optional_
 
 Using powershell or terminal (must be on same network)
 
@@ -225,83 +129,87 @@ Using powershell or terminal (must be on same network)
 ssh [username]@[device name].local
 ```
 
-* Follow steps to allow connection
+- Follow steps to allow connection
 
-* To make life simpler going forward, get the VS code extension *Remote Explorer*
-    - Then follow steps to make a SSH connection in VS code.
+- To make life simpler going forward, get the VS code extension _Remote Explorer_
+  - Then follow steps to make a SSH connection in VS code.
 
 ---
 
 ### Driver Installation:
 
-* This will update all the base packages and drivers for the Raspberry Pi. 
+- This will update all the base packages and drivers for the Raspberry Pi.
+
+  ```bash
+  sudo apt update
+  sudo apt -y upgrade
+  sudo reboot
+  ```
+
+  - The following steps are for ease of installation of all the necessary packages/drivers for the RPI. Running the setup script will install all the packages as well as create a virtual python environment in the _senior-design-312_ directory.
+
+  - This script also adds aliases to the .bashrc and exports the directory of the project to PYTHONPATH.
+
+  ADDED ALIASES:
+
+  - ptree - shows the tree of the directory, excludes some of the unimportant files.
+  - penvca - Creates and activates a python virtual environment in _**.env**_
+  - penva - Activates the python virtual environment.
+
+  ```bash
+  sudo apt install -y git
+  mkdir git
+  cd git
+  git clone https://github.com/adamzoiss/senior-design-312.git
+  cd senior-design-312
+  cd setup_utils
+  chmod +x setup.sh
+  ./setup.sh
+  ```
+
+  - After the reboot, change the directory to _senior-design-312_ and run:
 
     ```bash
-    sudo apt update
-    sudo apt -y upgrade
-    sudo reboot
+    penva
     ```
 
-     - The following steps are for ease of installation of all the necessary packages/drivers for the RPI. Running the setup script will install all the packages as well as create a virtual python environment in the *senior-design-312* directory.
-
-     - This script also adds aliases to the .bashrc and exports the directory of the project to PYTHONPATH.
-
-    ADDED ALIASES:
-     - ptree - shows the tree of the directory, excludes some of the unimportant files.
-     - penvca - Creates and activates a python virtual environment in *__.env__*
-     - penva - Activates the python virtual environment.
-
-    ```bash
-    sudo apt install -y git
-    mkdir git
-    cd git
-    git clone https://github.com/adamzoiss/senior-design-312.git
-    cd senior-design-312
-    cd setup_utils
-    chmod +x setup.sh
-    ./setup.sh
-    ```
-
-     - After the reboot, change the directory to *senior-design-312* and run:
-
-        ```bash
-        penva
-        ```
-    
-    All of the code should now be ready to run in the project.
+  All of the code should now be ready to run in the project.
 
 ---
 
 ## Coding Environment:
-* When running the code ensure that the virtual environment is activated, if the setup script was installed, in the project directory, run:
-    ```bash
-    penva
-    ```
+
+- When running the code ensure that the virtual environment is activated, if the setup script was installed, in the project directory, run:
+  ```bash
+  penva
+  ```
 
 ---
 
 ### Running the Code:
 
-* Assuming the setup script was run to configure the RPI, ensure the virtual environment is activated (.env) to the left of your bash info, and run:
-    ```bash
-    python "path to python program"
-    ```
+- Assuming the setup script was run to configure the RPI, ensure the virtual environment is activated (.env) to the left of your bash info, and run:
 
-* To run the tests and view the statistics, run:
-    ```bash
-    pytest
-    ```
+  ```bash
+  python "path to python program"
+  ```
+
+- To run the tests and view the statistics, run:
+  ```bash
+  pytest
+  ```
 
 ---
 
 ## Creating a daemon:
+
 A daemon is a background process that runs continuously and independently of user interaction. It starts at boot (or when needed) and runs in the background, typically without a graphical interface. Daemons are often used for tasks like logging, networking, and running services (like web servers, audio managers, etc.). In the case of this project, a daemon is used to start the interface manager program on boot, and if it crashes, restarts the program.
 
-* Creating a Systemd Service:
-    ```bash
-    sudo nano /etc/systemd/system/run-py-program.service
-    ```
-    > This should be pasted and modified to use the correct python path, program directory, and *pi* username
+- Creating a Systemd Service:
+  ```bash
+  sudo nano /etc/systemd/system/run-py-program.service
+  ```
+  > This should be pasted and modified to use the correct python path, program directory, and _pi_ username
 
 ```
 [Unit]
@@ -326,125 +234,140 @@ StandardError=append:/home/pi/git/senior-design-312/logs/system.err
 WantedBy=multi-user.target
 ```
 
-* Allow Systemd to use pulse audio:
+- Allow Systemd to use pulse audio:
 
-    > By default, PulseAudio does not allow system services to access it. Run:
+  > By default, PulseAudio does not allow system services to access it. Run:
 
-    ```
-    sudo nano /etc/pulse/client.conf
-    ```
-    * At the end of the file, add:
-        ```
-        autospawn = yes
-        ```
-    * Then restart pulseaudio
-        ```
-        pulseaudio -k
-        pulseaudio --start
-        ```
+  ```
+  sudo nano /etc/pulse/client.conf
+  ```
 
-* Enabling and staring the daemon:
-
-    > To apply the changes made in the *.service* file:
+  - At the end of the file, add:
     ```
-    sudo systemctl daemon-reload
+    autospawn = yes
     ```
-    > To enable:
+  - Then restart pulseaudio
     ```
-    sudo systemctl enable run-py-program.service
-    ```
-    > To start:
-    ```
-    sudo systemctl start run-py-program.service
-    ```
-    > View the status:
-    ```
-    sudo systemctl status run-py-program.service
+    pulseaudio -k
+    pulseaudio --start
     ```
 
-    * More useful commands:
-        ```
-        sudo systemctl disable run-py-program.service
-        sudo systemctl stop run-py-program.service
-        sudo systemctl restart run-py-program.service
-        ```
+- Enabling and staring the daemon:
+
+  > To apply the changes made in the _.service_ file:
+
+  ```
+  sudo systemctl daemon-reload
+  ```
+
+  > To enable:
+
+  ```
+  sudo systemctl enable run-py-program.service
+  ```
+
+  > To start:
+
+  ```
+  sudo systemctl start run-py-program.service
+  ```
+
+  > View the status:
+
+  ```
+  sudo systemctl status run-py-program.service
+  ```
+
+  - More useful commands:
+    ```
+    sudo systemctl disable run-py-program.service
+    sudo systemctl stop run-py-program.service
+    sudo systemctl restart run-py-program.service
+    ```
 
 ---
 
 ## Using Git:
+
 Git is a distributed version control system designed to track changes in source code during software development. It allows multiple developers to collaborate on a project by managing code changes, maintaining a history of modifications, and enabling branching and merging workflows. Git ensures code integrity and simplifies collaboration by providing tools to resolve conflicts and review changes.
 
 ### Setting up Git:
-* First set username and password via:
+
+- First set username and password via:
+
+  ```bash
+  git config --global user.name "github username"
+  git config --global user.email "github email"
+  ```
+
+  - To verify they were set correctly:
     ```bash
-    git config --global user.name "github username"
-    git config --global user.email "github email"
+    git config --global -l
     ```
 
-    - To verify they were set correctly:
-        ```bash
-        git config --global -l
-        ```
-
-    1. Make a github account (Make sure you set your username and email in global config)
-    2. install _gh_ for github authentication
-        ```bash
-        sudo apt install gh
-        gh auth login
-        ```
-    3. Follow steps and log in
-    4. Verify with:
-        ```bash
-        gh auth status
-        ```
+  1. Make a github account (Make sure you set your username and email in global config)
+  2. install _gh_ for github authentication
+     ```bash
+     sudo apt install gh
+     gh auth login
+     ```
+  3. Follow steps and log in
+  4. Verify with:
+     ```bash
+     gh auth status
+     ```
 
 ---
 
 ### Git usage
 
-* Always make edits in a `branch`, do not work directly on main. To see what branch is active:
-    ```bash
-    git branch
-    ```
+- Always make edits in a `branch`, do not work directly on main. To see what branch is active:
 
-* To `checkout` an active branch with name *branchname*:
-    ```bash
-    git checkout branchname
-    ```
+  ```bash
+  git branch
+  ```
 
-* To create a new working branch:
-    ```bash
-    git checkout -b nameofbranch
-    ```
+- To `checkout` an active branch with name _branchname_:
 
-* After making changes on a branch, save (`commit`) the changes by:
-    ```bash
-    git commit -a -m "brief description of what was done"
-    ```
-    - This saves the changes locally on your computer, to add (push the changes to github)
-        ```bash
-        git push origin branchname
-        ```
-        - Alternatively, If you want Git to automatically set upstream branches when pushing new local branches, you can enable:
-            ```bash
-            git config --global push.autoSetupRemote true
-            ```
-            This way, next time you create a new branch and push, Git will automatically set up the remote tracking branch. The command will now look like:
-            ```bash
-            git push
-            ```
-    
+  ```bash
+  git checkout branchname
+  ```
 
-* Getting the most up to date code:
-    - save changes that were done on your branch via a commit or stash
-    - check out `main`
-        ```bash
-        git fetch
-        ```
-        ```bash
-        git pull
-        ```
-    - the most up to date version of main is now what you see
+- To create a new working branch:
+
+  ```bash
+  git checkout -b nameofbranch
+  ```
+
+- After making changes on a branch, save (`commit`) the changes by:
+
+  ```bash
+  git commit -a -m "brief description of what was done"
+  ```
+
+  - This saves the changes locally on your computer, to add (push the changes to github)
+    ```bash
+    git push origin branchname
+    ```
+    - Alternatively, If you want Git to automatically set upstream branches when pushing new local branches, you can enable:
+      ```bash
+      git config --global push.autoSetupRemote true
+      ```
+      This way, next time you create a new branch and push, Git will automatically set up the remote tracking branch. The command will now look like:
+      ```bash
+      git push
+      ```
+
+- Getting the most up to date code:
+  - save changes that were done on your branch via a commit or stash
+  - check out `main`
+    ```bash
+    git fetch
+    ```
+    ```bash
+    git pull
+    ```
+  - the most up to date version of main is now what you see
 
 ---
 
@@ -454,7 +377,8 @@ Git is a distributed version control system designed to track changes in source 
 
 `numpy` style documentation is being used for this project.
 
-__Example of a NumPy-style docstring:__
+**Example of a NumPy-style docstring:**
+
 ```python
 import numpy as np
 
@@ -488,19 +412,21 @@ def compute_mean(arr):
         raise ValueError("Input must be a NumPy array.")
     return arr.mean()
 ```
-__Breakdown of the NumPy docstring format:__
 
-* Short summary: The first line briefly describes what the function does.
-* Parameters: List of arguments, types, and descriptions.
-* Returns: Description of the return value and type.
-* Raises: Expected exceptions that may be thrown.
-* Examples: Demonstrates usage with `doctest`-style examples.
+**Breakdown of the NumPy docstring format:**
+
+- Short summary: The first line briefly describes what the function does.
+- Parameters: List of arguments, types, and descriptions.
+- Returns: Description of the return value and type.
+- Raises: Expected exceptions that may be thrown.
+- Examples: Demonstrates usage with `doctest`-style examples.
 
 ---
 
-__Class with NumPy-style Docstrings__
+**Class with NumPy-style Docstrings**
 
-This class represents a __Simple Linear Regression__ model.
+This class represents a **Simple Linear Regression** model.
+
 ```python
 import numpy as np
 
@@ -600,137 +526,158 @@ class SimpleLinearRegression:
         return self.coef_ * X + self.intercept_
 ```
 
-__NumPy Docstrings Benefits__
-* Structured and readable: Clearly defines parameters, return values, and exceptions.
-* Works with auto-documentation tools like Sphinx.
-* Encourages best practices: Makes it easier to maintain and understand code.
+**NumPy Docstrings Benefits**
 
+- Structured and readable: Clearly defines parameters, return values, and exceptions.
+- Works with auto-documentation tools like Sphinx.
+- Encourages best practices: Makes it easier to maintain and understand code.
 
 ---
 
 ### Type Hinting Guide:
 
 1. Function Arguments & Return Types
-    ```python
-    def add(x: int, y: int) -> int:
-        return x + y
-    ```
-    `x: int` and `y: int` specify that x and y should be integers.
 
-    `-> int` means the function returns an integer.
+   ```python
+   def add(x: int, y: int) -> int:
+       return x + y
+   ```
+
+   `x: int` and `y: int` specify that x and y should be integers.
+
+   `-> int` means the function returns an integer.
 
 2. Variable Annotations
-    ```python
-    name: str = "Alice"
-    age: int = 25
-    height: float = 5.9
-    is_active: bool = True
-    ```
+
+   ```python
+   name: str = "Alice"
+   age: int = 25
+   height: float = 5.9
+   is_active: bool = True
+   ```
 
 3. Lists, Tuples, and Dictionaries
 
-    Use `list`, `tuple`, and `dict` with generic types:
-    ```python
-    from typing import List, Tuple, Dict
+   Use `list`, `tuple`, and `dict` with generic types:
 
-    numbers: List[int] = [1, 2, 3, 4]
-    point: Tuple[float, float] = (3.5, 7.2)
-    person: Dict[str, int] = {"age": 30, "score": 95}
-    ```
-* `List[int]`: A list of integers.
-* `Tuple[float, float]`: A tuple with two floats.
-* `Dict[str, int]`: A dictionary with string keys and integer values.
+   ```python
+   from typing import List, Tuple, Dict
+
+   numbers: List[int] = [1, 2, 3, 4]
+   point: Tuple[float, float] = (3.5, 7.2)
+   person: Dict[str, int] = {"age": 30, "score": 95}
+   ```
+
+- `List[int]`: A list of integers.
+- `Tuple[float, float]`: A tuple with two floats.
+- `Dict[str, int]`: A dictionary with string keys and integer values.
 
 4. Optional & Union Types
 
-    __Optional Type (Allows `None`)__
-    ```python
-    from typing import Optional
+   **Optional Type (Allows `None`)**
 
-    def get_user_name(user_id: int) -> Optional[str]:
-        return "Alice" if user_id == 1 else None
-    ```
-    `Optional[str]` is equivalent to `Union[str, None]`.
+   ```python
+   from typing import Optional
 
-    __Union (Multiple Types Allowed)__
-    ```python
-    from typing import Union
+   def get_user_name(user_id: int) -> Optional[str]:
+       return "Alice" if user_id == 1 else None
+   ```
 
-    def parse_value(value: Union[int, str]) -> str:
-        return str(value)
-    ```
-    `Union[int, str]` means `value` can be an __int__ or __str__.
+   `Optional[str]` is equivalent to `Union[str, None]`.
+
+   **Union (Multiple Types Allowed)**
+
+   ```python
+   from typing import Union
+
+   def parse_value(value: Union[int, str]) -> str:
+       return str(value)
+   ```
+
+   `Union[int, str]` means `value` can be an **int** or **str**.
 
 5. Custom Classes as Types
-    ```python
-    class User:
-        def __init__(self, name: str):
-            self.name = name
 
-    def greet(user: User) -> str:
-        return f"Hello, {user.name}!"
-    ```
-    The function `greet` expects a `User` instance.
+   ```python
+   class User:
+       def __init__(self, name: str):
+           self.name = name
+
+   def greet(user: User) -> str:
+       return f"Hello, {user.name}!"
+   ```
+
+   The function `greet` expects a `User` instance.
 
 6. Callable (Hinting Functions)
-    ```python
-    from typing import Callable
 
-    def execute(func: Callable[[int, int], int], x: int, y: int) -> int:
-        return func(x, y)
+   ```python
+   from typing import Callable
 
-    def multiply(a: int, b: int) -> int:
-        return a * b
+   def execute(func: Callable[[int, int], int], x: int, y: int) -> int:
+       return func(x, y)
 
-    result = execute(multiply, 3, 4)  # Returns 12
-    ```
-    `Callable[[int, int], int]` means a function that:
-    * Takes two integeres.
-    * Returns an integer.
+   def multiply(a: int, b: int) -> int:
+       return a * b
+
+   result = execute(multiply, 3, 4)  # Returns 12
+   ```
+
+   `Callable[[int, int], int]` means a function that:
+
+   - Takes two integeres.
+   - Returns an integer.
 
 7. Type Aliases (For Readability)
-    ```python
-    from typing import List
 
-    Coordinates = List[Tuple[float, float]]  # Type alias
+   ```python
+   from typing import List
 
-    route: Coordinates = [(10.0, 20.0), (30.5, 40.2)]
-    ```
-    Now, `Coordinates` can be used instead of `List[Tuple[float, float]]`.
+   Coordinates = List[Tuple[float, float]]  # Type alias
+
+   route: Coordinates = [(10.0, 20.0), (30.5, 40.2)]
+   ```
+
+   Now, `Coordinates` can be used instead of `List[Tuple[float, float]]`.
 
 8. Type Variables (For Generic Functions & Classes)
 
-    *This is the same concept in C++ as `template <Typename T>`*
-    ```python
-    from typing import TypeVar, Generic
+   _This is the same concept in C++ as `template <Typename T>`_
 
-    T = TypeVar('T')  # Generic Type
+   ```python
+   from typing import TypeVar, Generic
 
-    def repeat(value: T, times: int) -> List[T]:
-        return [value] * times
+   T = TypeVar('T')  # Generic Type
 
-    print(repeat("Hello", 3))  # ['Hello', 'Hello', 'Hello']
-    ```
-    Here:
+   def repeat(value: T, times: int) -> List[T]:
+       return [value] * times
 
-    * `T` is a Type Variable that allows any type.
-    * `repeat` works with any type, maintaining type safety.
+   print(repeat("Hello", 3))  # ['Hello', 'Hello', 'Hello']
+   ```
+
+   Here:
+
+   - `T` is a Type Variable that allows any type.
+   - `repeat` works with any type, maintaining type safety.
 
 9. TypedDict (For Struct-like Dictionaries)
-    ```python
-    from typing import TypedDict
 
-    class UserDict(TypedDict):
-        name: str
-        age: int
+   ```python
+   from typing import TypedDict
 
-    user: UserDict = {"name": "Alice", "age": 30}
-    ```
-    This ensures `user` has only the specified keys and types.
+   class UserDict(TypedDict):
+       name: str
+       age: int
+
+   user: UserDict = {"name": "Alice", "age": 30}
+   ```
+
+   This ensures `user` has only the specified keys and types.
 
 10. `Self` Type Hinting for Methods
 
     Introduced in Python 3.11, `Self` hints that a method returns an instance of its class.
+
     ```python
     from typing import Self
 
@@ -744,23 +691,26 @@ __NumPy Docstrings Benefits__
 
 ---
 
-__Static Type Checking with `mypy`__
+**Static Type Checking with `mypy`**
 
 To enforce type checking, install mypy:
 
 ```bash
 pip install mypy
 ```
+
 Then run:
 
 ```bash
 mypy my_script.py
 ```
+
 This will flag type errors before runtime.
 
 ---
 
 ## Contributors:
+
 Danielle Awoniyi : danielle1.awoniyi@famu.edu
 
 Amira McKaige : amm21bc@fsu.edu

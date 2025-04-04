@@ -39,7 +39,7 @@ class MockRFM69:
         self.rx_delay_per_byte = (
             0.00006  # 100 microseconds per byte for reception
         )
-        self.processing_delay = 0.0  # 0ms for packet processing
+        self.processing_delay = 0.001  # 0ms for packet processing
 
         # Stats for performance testing
         self.packets_sent = 0

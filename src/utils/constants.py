@@ -11,6 +11,9 @@ import pyaudio
 Option to enable logging to the terminal/console.
 """
 EN_CONSOLE_LOGGING = True
+MODE_AES = True  # AES mode
+MODE_RSA = False  # RSA mode
+MODE_HYBRID = False  # Hybrid mode
 
 """
 Application threads

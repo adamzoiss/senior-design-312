@@ -41,7 +41,13 @@ from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import serialization, hashes
 
 from src.utils.utils import *
-from src.utils.constants import PACKET_ENCRYPTION, DATA_ENCRYPTION
+from src.utils.constants import (
+    PACKET_ENCRYPTION,
+    DATA_ENCRYPTION,
+    MODE_AES,
+    MODE_RSA,
+    MODE_HYBRID,
+)
 from src.logging.logger import *
 
 
@@ -97,15 +103,24 @@ class CryptoManager:
         # Setting up the AES key and IV
         self.key, self.iv = self._load_key_iv()
         self.public_key, self.private_key = self._load_rsa_keys()
-        self.hybrid_public_key, self.hybrid_private_key = self._load_hybrid_keys()
+        self.hybrid_public_key, self.hybrid_private_key = (
+            self._load_hybrid_keys()
+        )
         self.hybrid_aes_key, self.hybrid_iv = self._load_hybrid_aes_key()
-        
+
         self.cipher = Cipher(algorithms.AES(self.key), modes.CFB(self.iv))
-        self.hybrid_cipher = Cipher(algorithms.AES(self.hybrid_aes_key), modes.CFB(self.hybrid_iv))
+        self.hybrid_cipher = Cipher(
+            algorithms.AES(self.hybrid_aes_key), modes.CFB(self.hybrid_iv)
+        )
 
         # Dictates if Encyption is enabled or not
         self.penc_en = PACKET_ENCRYPTION
         self.denc_en = DATA_ENCRYPTION
+
+        # Sets the encryption mode
+        self.mode_aes = MODE_AES
+        self.mode_rsa = MODE_RSA
+        self.mode_hybrid = MODE_HYBRID
 
         self.logger.info("CryptoManager initialized")
 
@@ -184,19 +199,19 @@ class CryptoManager:
         try:
             with open(self.hybrid_file, "rb") as f:
                 encrypted_data = f.read()
-            
+
             decrypted_data = self.hybrid_private_key.decrypt(
                 encrypted_data,
                 padding.OAEP(
                     mgf=padding.MGF1(algorithm=hashes.SHA256()),
                     algorithm=hashes.SHA256(),
-                    label=None
-                )
+                    label=None,
+                ),
             )
-            
+
             aes_key = decrypted_data[:32]
             iv = decrypted_data[32:]
-            
+
             self.logger.debug("Hybrid AES key loaded and decrypted.")
             return aes_key, iv
         except Exception as e:
@@ -240,12 +255,12 @@ class CryptoManager:
     def rsa_encrypt(self, data):
         """
         Encrypt data using RSA. Handles data chunking for large files.
-        
+
         Parameters
         ----------
         data : bytes
             The data to encrypt.
-            
+
         Returns
         -------
         bytes
@@ -253,8 +268,11 @@ class CryptoManager:
         """
         try:
             chunk_size = 446  # Maximum size for RSA-4096 with OAEP padding
-            chunks = [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
-            
+            chunks = [
+                data[i : i + chunk_size]
+                for i in range(0, len(data), chunk_size)
+            ]
+
             encrypted_chunks = []
             for chunk in chunks:
                 encrypted_chunk = self.public_key.encrypt(
@@ -262,12 +280,12 @@ class CryptoManager:
                     padding.OAEP(
                         mgf=padding.MGF1(algorithm=hashes.SHA256()),
                         algorithm=hashes.SHA256(),
-                        label=None
-                    )
+                        label=None,
+                    ),
                 )
                 encrypted_chunks.append(encrypted_chunk)
 
-            return b''.join(encrypted_chunks)
+            return b"".join(encrypted_chunks)
         except Exception as e:
             self.logger.error(f"RSA encryption error: {e}")
             return None
@@ -275,12 +293,12 @@ class CryptoManager:
     def rsa_decrypt(self, encrypted_data):
         """
         Decrypt RSA encrypted data. Handles chunked data.
-        
+
         Parameters
         ----------
         encrypted_data : bytes
             The encrypted data to decrypt.
-            
+
         Returns
         -------
         bytes
@@ -288,9 +306,11 @@ class CryptoManager:
         """
         try:
             chunk_size = 512  # RSA-4096 encrypted chunk size
-            chunks = [encrypted_data[i:i + chunk_size] 
-                     for i in range(0, len(encrypted_data), chunk_size)]
-            
+            chunks = [
+                encrypted_data[i : i + chunk_size]
+                for i in range(0, len(encrypted_data), chunk_size)
+            ]
+
             decrypted_chunks = []
             for chunk in chunks:
                 decrypted_chunk = self.private_key.decrypt(
@@ -298,12 +318,12 @@ class CryptoManager:
                     padding.OAEP(
                         mgf=padding.MGF1(algorithm=hashes.SHA256()),
                         algorithm=hashes.SHA256(),
-                        label=None
-                    )
+                        label=None,
+                    ),
                 )
                 decrypted_chunks.append(decrypted_chunk)
 
-            return b''.join(decrypted_chunks)
+            return b"".join(decrypted_chunks)
         except Exception as e:
             self.logger.error(f"RSA decryption error: {e}")
             return None
@@ -311,12 +331,12 @@ class CryptoManager:
     def hybrid_encrypt(self, data):
         """
         Encrypt data using hybrid encryption (RSA + AES).
-        
+
         Parameters
         ----------
         data : bytes
             The data to encrypt.
-            
+
         Returns
         -------
         bytes
@@ -332,12 +352,12 @@ class CryptoManager:
     def hybrid_decrypt(self, encrypted_data):
         """
         Decrypt data using hybrid encryption (RSA + AES).
-        
+
         Parameters
         ----------
         encrypted_data : bytes
             The encrypted data to decrypt.
-            
+
         Returns
         -------
         bytes

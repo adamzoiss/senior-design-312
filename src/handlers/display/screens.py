@@ -109,18 +109,43 @@ class Mode(Screen):
             The display object to draw on.
         """
         super().__init__(display)
-        self.SELECTIONS["RADIO"] = 0
-        self.SELECTIONS["LOCAL"] = 1
-        self.SELECTIONS["DEBUG"] = 2
 
-    def draw_screen(self):
+        self.SELECTIONS["AES"] = 0
+        self.SELECTIONS["RSA"] = 1
+        self.SELECTIONS["HYBRID"] = 2
+
+    def draw_screen(
+        self,
+        aes_en=MODE_AES,
+        rsa_en=MODE_RSA,
+        hybrid_en=MODE_HYBRID,
+    ):
         """
         Draws the mode selection screen.
         """
         self.display.draw_text("MODE", x=5, y=2, font_size=12)
-        self.display.draw_text("Radio", x=5, y=20, font_size=10)
-        self.display.draw_text("Local", x=5, y=35, font_size=10)
-        self.display.draw_text("Debug", x=5, y=50, font_size=10)
+        self.display.draw_text("AES", x=5, y=20, font_size=10)
+        self.display.draw_text("RSA", x=5, y=35, font_size=10)
+        self.display.draw_text("HYB", x=5, y=50, font_size=10)
+
+        self.display.draw_text(
+            f"AES {'EN' if aes_en else ''}",
+            x=5,
+            y=20,
+            font_size=10,
+        )
+        self.display.draw_text(
+            f"RSA {'EN' if rsa_en else ''}",
+            x=5,
+            y=35,
+            font_size=10,
+        )
+        self.display.draw_text(
+            f"HYB {'EN' if hybrid_en else ''}",
+            x=5,
+            y=50,
+            font_size=10,
+        )
 
 
 class Debug(Screen):
