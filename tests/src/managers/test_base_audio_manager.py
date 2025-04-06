@@ -232,3 +232,81 @@ def test_decryption_performance(base_audio_manager, capfd):
 
     # Simple assertion to make the test pass
     assert duration > 0, "Decryption timing should be measurable"
+
+def test_encoding(base_audio_manager, capfd):
+    base_audio_manager.open_input_stream()
+
+    file = "tests/src/audio/48k_960.wav"
+    with wave.open(file, "rb") as wf:
+        raw_file_data = wf.readframes(wf.getnframes())
+    
+    chunk_size = FRAME_SIZE * 2
+    chunk_count = 0
+
+    with capfd.disabled():
+        print("STARTING ENCODING TEST")
+
+    while base_audio_manager.audio_data:
+        # get the mock input data
+        data = base_audio_manager.input_stream.read(FRAME_SIZE)
+        encoded = base_audio_manager.encode(data)   #encode the data
+
+        #get teh raw data and encode it for comparison
+        raw_data = raw_file_data[:chunk_size]
+        raw_file_data = raw_file_data[chunk_size:]
+        encoded_raw = base_audio_manager.encode(raw_data)
+
+        with capfd.disabled():
+            print(f"chunk {chunk_count}")
+            print(f"original size: {len(data)} bytes")
+            print(f"encoded size:  {len(encoded)} bytes")
+
+        assert encoded is not None and len(encoded) > 0
+        assert encoded_raw is not None and len(encoded_raw) > 0
+
+        chunk_count += 1
+    
+    with capfd.disabled():
+        print("FINISHED ENCODING TEST")
+
+
+def test_decoding(base_audio_manager, capfd):
+    base_audio_manager.open_input_stream()
+
+    FILE = "tests/src/audio/48k_960.wav"
+    with wave.open(FILE, "rb") as wf:
+        raw_file_data = wf.readframes(wf.getnframes())
+
+    chunk_size = FRAME_SIZE * 2
+    chunk_count = 0
+
+    with capfd.disabled():
+        print("STARTING DECODING TEST")
+
+    while base_audio_manager.audio_data:
+        # get input and encode it
+        data = base_audio_manager.input_stream.read(FRAME_SIZE)
+        encoded_data = base_audio_manager.encode(data)
+        # decode the encoded data
+        decoded_data = base_audio_manager.decode(encoded_data)
+
+        # do the same with raw data
+        raw_data = raw_file_data[:chunk_size]
+        raw_file_data = raw_file_data[chunk_size:]
+        encoded_raw = base_audio_manager.encode(raw_data)
+        decoded_raw = base_audio_manager.decode(encoded_raw)
+
+        with capfd.disabled():
+            print(f"chunk {chunk_count}")
+            print(f"encoded size:  {len(encoded_data)} bytes")
+            print(f"decoded size:  {len(decoded_data)} bytes")
+
+        # make sure decoded data exists and matches the expected length
+        assert decoded_data is not None and len(decoded_data) > 0
+        assert decoded_raw is not None and len(decoded_raw) > 0
+        assert len(decoded_data) == len(decoded_raw)
+
+        chunk_count += 1
+
+    with capfd.disabled():
+        print("DECODING TEST FINISHED")
