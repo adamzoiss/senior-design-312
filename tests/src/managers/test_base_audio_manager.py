@@ -127,13 +127,13 @@ def test_encryption_performance(base_audio_manager, capfd):
 
     # Time the encryption of all chunks
     total_bytes = 0
-    start_time = time.time()
+    start_time = time.perf_counter()
 
     for chunk in chunks:
         base_audio_manager.crypto_manager.encrypt(chunk)
         total_bytes += len(chunk)
 
-    end_time = time.time()
+    end_time = time.perf_counter()
     duration = end_time - start_time
 
     # Calculate metrics
@@ -192,7 +192,7 @@ def test_decryption_performance(base_audio_manager, capfd):
 
     # Time the decryption of all chunks
     total_bytes = 0
-    start_time = time.time()
+    start_time = time.perf_counter()
 
     decrypted_chunks = []
     for encrypted_chunk in encrypted_chunks:
@@ -202,7 +202,7 @@ def test_decryption_performance(base_audio_manager, capfd):
         decrypted_chunks.append(decrypted_chunk)
         total_bytes += len(encrypted_chunk)
 
-    end_time = time.time()
+    end_time = time.perf_counter()
     duration = end_time - start_time
 
     # Calculate metrics
