@@ -49,6 +49,7 @@ graph TB
 In our implementation, we use AES in CFB (Cipher Feedback) mode, which turns the block cipher into a stream cipher, making it ideal for encrypting continuous data streams like audio.
 
 ```mermaid
+%%{init: {'theme': 'default', 'themeVariables': { 'fontSize': '18px', 'fontFamily': 'arial', 'edgeLabelBackground':'#ffffff', 'tertiaryColor': '#f5f5f5'}, 'flowchart': {'diagramPadding': 40, 'curve': 'linear'}} }%%
 graph LR
     %% Define styles
     classDef plaintext fill:#d4f1f9,stroke:#0e5f8a,stroke-width:2px
