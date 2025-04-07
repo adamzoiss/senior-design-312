@@ -7,6 +7,7 @@ RSA (Rivest-Shamir-Adleman) is an asymmetric encryption algorithm that uses a pa
 ## Simplified RSA Process
 
 ```mermaid
+%%{init: {'theme': 'default', 'themeVariables': { 'fontSize': '18px', 'fontFamily': 'arial', 'edgeLabelBackground':'#ffffff', 'tertiaryColor': '#f5f5f5'}, 'flowchart': {'diagramPadding': 40, 'curve': 'linear'}} }%%
 graph TB
     %% Define styles
     classDef plaintext fill:#d4f1f9,stroke:#0e5f8a,stroke-width:2px
