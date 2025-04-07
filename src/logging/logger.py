@@ -1,5 +1,6 @@
 import logging
 from logging.handlers import RotatingFileHandler
+from src.utils.constants import EN_CONSOLE_LOGGING
 
 
 class Logger:
@@ -11,7 +12,7 @@ class Logger:
         log_file="logs/project.log",
         overwrite=False,
         console_level=logging.INFO,
-        console_logging=True,
+        console_logging=EN_CONSOLE_LOGGING,
     ):
         """Singleton pattern: Ensures each logger instance is unique by name."""
         if name not in cls._instances:

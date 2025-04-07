@@ -1,16 +1,14 @@
 """
-`adafruit_rfm69`
+Port of `adafruit_rfm69` for the Raspberry Pi 5.
+rfm69
 ====================================================
 
-CircuitPython RFM69 packet radio module. This supports basic RadioHead-compatible sending and
+Ported CircuitPython RFM69 packet radio module. This
+supports basic RadioHead-compatible sending and
 receiving of packets with RFM69 series radios (433/915Mhz).
 
 .. warning:: This is NOT for LoRa radios!
 
-.. note:: This is a 'best effort' at receiving data using pure Python code--there is not interrupt
-    support so you might lose packets if they're sent too quickly for the board to process them.
-    You will have the most luck using this in simple low bandwidth scenarios like sending and
-    receiving a 60 byte packet at a time--don't try to receive many kilobytes of data at a time!
 
 * Author(s): Tony DiCola, Jerry Needell, Adam Zoiss
 
@@ -251,7 +249,7 @@ class RFM69:
         reset_pin,
         frequency: int,
         *,
-        sync_word: bytes = b"\x2D\xD4",
+        sync_word: bytes = b"\x2d\xd4",
         preamble_length: int = 4,
         encryption_key: Optional[bytes] = None,
         high_power: bool = True,
@@ -332,7 +330,7 @@ class RFM69:
         """The delay time before attemting to send an ACK.
            If ACKs are being missed try setting this to .1 or .2.
         """
-        # initialize sequence number counter for reliabe datagram mode
+        # initialize sequence number counter for reliable datagram mode
         self.sequence_number = 0
         # create seen Ids list
         self.seen_ids = bytearray(256)

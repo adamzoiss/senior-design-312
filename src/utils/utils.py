@@ -6,9 +6,16 @@ Description: Functions that are used throughout the project.
 """
 
 from pathlib import Path
+from time import perf_counter
 import re
 
 REPO_NAME = "senior-design-312"
+
+
+def sleep_microseconds(us):
+    end = perf_counter() + us / 1_000_000
+    while perf_counter() < end:
+        pass  # Busy-wait
 
 
 def get_proj_root() -> Path:

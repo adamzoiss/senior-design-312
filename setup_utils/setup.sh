@@ -21,8 +21,6 @@ penvca() {
 
 ##############################################################################
 # Adding alias to the bashrc file
-#!/bin/bash
-
 BASHRC="$HOME/.bashrc"
 
 # Define all lines you want to add to .bashrc
@@ -53,7 +51,7 @@ echo_yellow "Updating the raspberry pi"
 sudo apt update
 sudo apt -y upgrade
 echo_green Update and upgrade completed.
-
+##############################################################################
 # Enable I2C on Raspberry Pi
 echo_yellow "Enabling I2C on Raspberry Pi..."
 echo "Installing i2c-tools..."
@@ -79,14 +77,13 @@ fi
 echo "I2C baudrate set to $BAUDRATE in config.txt."
 echo_green "I2C configurations complete."
 sleep 2
-
+##############################################################################
 # Enabling SPI
 echo_yellow "Enabling SPI on Raspberry Pi..."
 echo "Enabling SPI..."
 sudo raspi-config nonint do_spi 0
 echo_green "SPI has been enabled."
 sleep 2
-
 ##############################################################################
 # Installing pulseaudio
 echo_yellow "Installing pulseaudio"

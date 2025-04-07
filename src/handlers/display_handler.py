@@ -7,6 +7,7 @@ Description: Handles interfacing with the display and navigation options.
 
 from src.handlers.display.screens import *
 from src.managers.thread_manager import ThreadManager
+from src.logging.logger import *
 
 
 class DisplayHandler(Menu, Mode):
@@ -37,14 +38,26 @@ class DisplayHandler(Menu, Mode):
         self.display = display
         self.MENU = Menu(self.display)
         self.MODE = Mode(self.display)
+
+        self.SETTINGS = Settings(self.display)
+
         self.DEBUG = Debug(self.display)
 
         self.CURRENT_SCREEN = self.MENU
 
+        #################################################
+        # Set up logging
+        self.logger: logging = Logger(
+            "DisplayHandler",
+            console_level=logging.INFO,
+            console_logging=EN_CONSOLE_LOGGING,
+        )
+        ##################################################
+
     def __del__(self):
         del self.display
 
-    def get_screen(self, screen: Screen):
+    def get_screen(self, screen: Screen, options=None):
         """
         Sets the current screen and draws its content.
 
@@ -65,8 +78,13 @@ class DisplayHandler(Menu, Mode):
             # Draw debug screen
             self.CURRENT_SCREEN = self.DEBUG
             self.CURRENT_SCREEN.draw_screen()
+        elif screen is Settings:
+            self.CURRENT_SCREEN = self.SETTINGS
+            self.CURRENT_SCREEN.draw_screen(en_enc=options)
         else:
-            print("ERROR")
+            self.logger.warning(
+                f"Tried to access a non-existent screen: |{screen}|."
+            )
 
     def select(self, selection: str, x1=56, y1=20, x2=64, y2=60):
         """

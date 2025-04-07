@@ -68,7 +68,7 @@ class InterfaceManager(GPIOHandler):
             "InterfaceManager",
             overwrite=True,
             console_level=logging.INFO,
-            console_logging=True,
+            console_logging=EN_CONSOLE_LOGGING,
         )
         ##################################################
         # Variable for volume
@@ -78,14 +78,10 @@ class InterfaceManager(GPIOHandler):
         # Last state values for the encoders
         self.last_state_a = 0
         self.last_state_b = 0
+        # Enable encryption
+        self.enc = ENCRYPTION
         ##################################################
         # Integrate audio
-        # FORMAT = pyaudio.paInt16
-        # CHANNELS = 1
-        RATE = 16000
-        # FRAME_SIZE = 960  # 20ms Opus frame at 48kHz
-        # PACKET_SIZE = 60  # Radio transceiver limit in bytes
-        # BUFFER_TIMEOUT = 2  # Max seconds to wait for a missing packet
         try:
             self.audio_man = AudioManager(
                 self.thread_manager,
@@ -211,9 +207,19 @@ class InterfaceManager(GPIOHandler):
                 if isinstance(self.nav.CURRENT_SCREEN, Debug):
                     return
 
-                # Check if the current screen is the menu
                 if isinstance(self.nav.CURRENT_SCREEN, Menu):
+                    # Check if settings was selected.
                     if (
+                        self.position
+                        == self.nav.CURRENT_SCREEN.SELECTIONS["SETTINGS"]
+                    ):
+                        self.nav.display.clear_screen()
+                        self.nav.get_screen(Settings, self.enc)
+                        self.nav.CURRENT_SCREEN.update_volume(self.volume)
+                        self.nav.display.refresh_display()
+                        self.position = -1
+                    # Check if mode was selected.
+                    elif (
                         self.position
                         == self.nav.CURRENT_SCREEN.SELECTIONS["MODE"]
                     ):
@@ -236,6 +242,23 @@ class InterfaceManager(GPIOHandler):
                         self.thread_manager.start_thread(
                             "Debug", self.nav.CURRENT_SCREEN.display_debug_info
                         )
+                elif isinstance(self.nav.CURRENT_SCREEN, Settings):
+                    if (
+                        self.position
+                        == self.nav.CURRENT_SCREEN.SELECTIONS["ENC"]
+                    ):
+                        self.nav.display.clear_screen()
+                        self.enc = not self.enc
+                        if self.enc:
+                            self.transmitter.rfm69.encryption_key = (
+                                ENCRYPTION_KEY
+                            )
+                        else:
+                            self.transmitter.rfm69.encryption_key = None
+                        self.nav.get_screen(Settings, self.enc)
+                        self.nav.CURRENT_SCREEN.update_volume(self.volume)
+                        self.nav.display.refresh_display()
+                        self.position = -1
                 else:
                     pass
             except KeyError:
@@ -272,7 +295,10 @@ class InterfaceManager(GPIOHandler):
                             self.transmitter.handle_input_stream,
                         )
                     case 1:  # Button released
+                        # Stop the transmit thread
                         self.thread_manager.stop_thread(TRANSMIT_THREAD)
+                        # Set the transmitter to be able to receive again.
+                        self.transmitter.rfm69.listen()
                     case _:  # Default case
                         self.logger.error("Error GPIO level is not 0 or 1")
             except Exception as e:
