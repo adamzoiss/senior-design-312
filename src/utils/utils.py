@@ -6,10 +6,40 @@ Description: Functions that are used throughout the project.
 """
 
 from pathlib import Path
+import subprocess
 from time import perf_counter
 import re
 
 REPO_NAME = "senior-design-312"
+
+
+def run_shell_script(script_path, args=None):
+    """
+    Execute a shell script with optional arguments.
+
+    Parameters
+    ----------
+    script_path : str
+        The path to the shell script file.
+    args : list, optional
+        List of additional arguments to pass to the script.
+
+    Returns
+    -------
+    CompletedProcess
+        A subprocess.CompletedProcess instance.
+    """
+    command = ["/usr/bin/bash", script_path]
+    if args:
+        command.extend(args)
+
+    try:
+        result = subprocess.run(
+            command, check=True, text=True, capture_output=True
+        )
+        return result
+    except subprocess.SubprocessError as e:
+        return f"Failed to execute shell script {script_path}: {e}"
 
 
 def sleep_microseconds(us):

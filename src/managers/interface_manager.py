@@ -7,6 +7,8 @@ Description: This will handle the interface with the rpi. GPIO pins will be set 
 """
 
 import time
+
+
 from src.handlers.display_handler import *
 from handlers.gpio_handler import *
 from src.managers.audio_manager import *
@@ -57,6 +59,8 @@ class InterfaceManager(GPIOHandler):
         chip_number : int, optional
             The chip number for the GPIO interface. Defaults to 0.
         """
+
+        #################################################
         # Call base class constructor
         super().__init__(chip_number)
         #################################################
@@ -70,6 +74,11 @@ class InterfaceManager(GPIOHandler):
             console_level=logging.INFO,
             console_logging=EN_CONSOLE_LOGGING,
         )
+        #################################################
+        # Import subprocess module to execute shell scripts
+
+        log_msg = run_shell_script("$HOME/alsa_config_start.sh")
+        self.logger.info(log_msg)
         ##################################################
         # Variable for volume
         self.volume = 100
