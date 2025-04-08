@@ -7,6 +7,7 @@ Description: Functions that are used throughout the project.
 
 from pathlib import Path
 import subprocess
+import os
 from time import perf_counter
 import re
 
@@ -29,7 +30,8 @@ def run_shell_script(script_path, args=None):
     CompletedProcess
         A subprocess.CompletedProcess instance.
     """
-    command = ["/usr/bin/bash", script_path]
+    expanded_path = os.path.expandvars(script_path)
+    command = ["/usr/bin/bash", expanded_path]
     if args:
         command.extend(args)
 
