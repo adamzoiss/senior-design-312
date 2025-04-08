@@ -229,7 +229,7 @@ class RFManager:
                         )
                     elif self.audio_manager.crypto_manager.mode_rsa:
                         # TODO: Implemenet RSA encryption
-                        enc_encoded = enc_encoded  #! Remove when implemented
+                        enc_encoded = encoded  #! Remove when implemented
                         pass
                     # Check if in hybrid mode
                     elif self.audio_manager.crypto_manager.mode_hybrid:
