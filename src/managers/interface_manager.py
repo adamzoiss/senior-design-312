@@ -227,7 +227,12 @@ class InterfaceManager(GPIOHandler):
                         == self.nav.CURRENT_SCREEN.SELECTIONS["MODE"]
                     ):
                         self.nav.display.clear_screen()
-                        self.nav.get_screen(Mode)
+                        self.nav.get_screen(
+                            Mode,
+                            self.audio_man.crypto_manager.mode_aes,
+                            self.audio_man.crypto_manager.mode_rsa,
+                            self.audio_man.crypto_manager.mode_hybrid,
+                        )
                         self.nav.CURRENT_SCREEN.update_volume(self.volume)
                         self.nav.display.refresh_display()
                         self.position = -1  # Reset selection position
