@@ -90,19 +90,19 @@ class BaseAudioManager:
         self.RATE = sample_rate
 
         self.audio = pyaudio.PyAudio()
-        # self.input_device_index = in_device_index  #! THIS VALUE CAN CHANGE
-        # self.output_device_index = out_device_index  #! THIS VALUE CAN CHANGE
+        self.input_device_index = in_device_index  #! THIS VALUE CAN CHANGE
+        self.output_device_index = out_device_index  #! THIS VALUE CAN CHANGE
 
-        # Added this for monitor support
-        if self.audio.get_device_count() > 7:
-            self.logger.info(
-                "The program is running under the assumption that it is plugged in to a monitor."
-            )
-            self.input_device_index = in_device_index
-            self.output_device_index = 3
-        else:
-            self.input_device_index = in_device_index
-            self.output_device_index = out_device_index
+        # # Added this for monitor support
+        # if self.audio.get_device_count() > 7:
+        #     self.logger.info(
+        #         "The program is running under the assumption that it is plugged in to a monitor."
+        #     )
+        #     self.input_device_index = in_device_index
+        #     self.output_device_index = 3
+        # else:
+        #     self.input_device_index = in_device_index
+        #     self.output_device_index = out_device_index
 
         self.input_stream = None
         self.output_stream = None

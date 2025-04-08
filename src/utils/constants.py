@@ -90,7 +90,7 @@ RATE = 48000
 FRAME_SIZE = 960  # 20ms Opus frame at 48kHz
 # Input and output device indices.
 INPUT_DEV_INDEX = 1
-OUTPUT_DEV_INDEX = 2
+OUTPUT_DEV_INDEX = 0
 
 # Audio processing parameters
 ENABLE_NORMALIZATION = True
