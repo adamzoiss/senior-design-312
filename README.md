@@ -6,29 +6,47 @@
 
 **Table of Contents**
 
-- [Project Description](#project-description)
+> _The links are clickable and will take you to that section or subsection._
+
+- [**Operation Manual**](#operation-manual)
+
+  - [How to start the device](#how-to-start-the-device)
+  - [How to operate](#how-to-operate)
+
+- [**Project Description**](#project-description)
+
   - [Overall Processes](#overall-processes)
   - [Audio Processing and Transmission](#audio-processing-and-transmission-of-data)
   - [Encryption/Decryption Information](#how-the-encryption-and-decryption-works)
   - [Materials](#materials)
-- [RPI Setup](#rpi-setup)
+
+- [**RPI Setup**](#rpi-setup)
+
   - [Flashing an OS](#flashing-an-os)
   - [How to SSH to rpi](#how-to-ssh-to-rpi)
   - [Driver Installation](#driver-installation)
-- [Coding Environment](#coding-environment)
+
+- [**Coding Environment**](#coding-environment)
+
   - [Running the Code](#running-the-code)
-- [Creating a daemon](#creating-a-daemon)
-- [Using Git](#using-git)
+
+- [**Creating a daemon**](#creating-a-daemon)
+
+- [**Using Git**](#using-git)
+
   - [Setting up Git](#setting-up-git)
   - [Git usage](#git-usage)
-- [Documenting Python Code](#documenting-python-code)
+
+- [**Documenting Python Code**](#documenting-python-code)
+
   - [Code Documentation](#code-documentation)
   - [Type Hinting Guide](#type-hinting-guide)
-- [Contributors](#contributors)
 
----
+- [**Contributors**](#contributors)
 
 **Resources:**
+
+[KiCad](https://www.kicad.org/) - The circuit schematic and PCB design files are in the kicad folder.
 
 [PEP 8 – Style Guide for Python Code](https://peps.python.org/pep-0008/#introduction) - Guideline for how to code in Python
 
@@ -37,6 +55,74 @@
 [Raspberry Pi pinout information](https://pinout.xyz/) - Useful for setting up buttons, switches, RF chip, etc. via the GPIO pins.
 
 [Git Information](https://git-scm.com/book/en/v2) - Information on how to use git.
+
+---
+
+## Operation Manual:
+
+A Guide on how to operate the end project will be discussed in this section.
+
+### How to start the device:
+
+Ideally a daemon could be used to start the program when booted up but there was a bug where the audio volume would only be set to 50%. The surefire way to get the device up and running is to first log in to the RPI5s and then configure it and and run the program manually:
+
+```
+alsamixer
+```
+
+- Set the volume to 100%
+
+```
+cd git/senior-design-312
+penva
+python src/managers/interface_manager.py
+```
+
+- This will start the program and show the logs in the terminal window
+
+### How to operate
+
+On the OLED screen there are two menus, Settings, and mode.
+
+The Settings menu allows for the user to select and deselect the encryption for the device.
+
+```
+PENC - Packet Encryption: This is enables or disables the transceivers on board AES encryption.
+
+DENC - Data Encryption: THis enables or disables the software encryption of the data.
+```
+
+In the Mode menu, the user can select the desired type of encryption for the data.
+
+```
+AES - Standard AES-256 Encryption
+
+RSA - (NOT IMPLEMENTED) RSA Encryption
+
+HYB - Hybrid Encryption method: RSA encrypted AES key
+```
+
+---
+
+Volume Control
+
+- The rotary encoder is used to change the onboard volume, which can be seen at the top left of the screen.
+
+Selection of menu options
+
+- The center button is used to select options in the menu.
+
+Returning to the main menu
+
+- The left button is used to return to the home screen.
+
+Navigation
+
+- The up and down buttons navigate through the menus.
+
+Transmitting
+
+- Pressing and holding the right button will start the transmission of the voice data from one device to the other. Releasing it will stop the transmission. Like a walkie-talkie, only one transceiver can be transmitting at a time.
 
 ---
 
@@ -179,7 +265,7 @@ ssh [username]@[device name].local
 
 ## Coding Environment:
 
-- When running the code ensure that the virtual environment is activated, if the setup script was installed, in the project directory, run:
+- When running the code ensure that the virtual environment is activated, if the setup script was run, in the project directory, run:
   ```bash
   penva
   ```
