@@ -7,6 +7,8 @@ Description: This will handle the interface with the rpi. GPIO pins will be set 
 """
 
 import time
+
+
 from src.handlers.display_handler import *
 from handlers.gpio_handler import *
 from src.managers.audio_manager import *
@@ -57,6 +59,8 @@ class InterfaceManager(GPIOHandler):
         chip_number : int, optional
             The chip number for the GPIO interface. Defaults to 0.
         """
+
+        #################################################
         # Call base class constructor
         super().__init__(chip_number)
         #################################################
@@ -70,6 +74,11 @@ class InterfaceManager(GPIOHandler):
             console_level=logging.INFO,
             console_logging=EN_CONSOLE_LOGGING,
         )
+        #################################################
+        # Import subprocess module to execute shell scripts
+
+        log_msg = run_shell_script("$HOME/alsa_config_start.sh")
+        self.logger.info(log_msg)
         ##################################################
         # Variable for volume
         self.volume = 100
@@ -227,24 +236,65 @@ class InterfaceManager(GPIOHandler):
                         == self.nav.CURRENT_SCREEN.SELECTIONS["MODE"]
                     ):
                         self.nav.display.clear_screen()
-                        self.nav.get_screen(Mode)
+                        self.nav.get_screen(
+                            Mode,
+                            self.audio_man.crypto_manager.mode_aes,
+                            self.audio_man.crypto_manager.mode_rsa,
+                            self.audio_man.crypto_manager.mode_hybrid,
+                        )
                         self.nav.CURRENT_SCREEN.update_volume(self.volume)
                         self.nav.display.refresh_display()
                         self.position = -1  # Reset selection position
                 elif isinstance(self.nav.CURRENT_SCREEN, Mode):
                     if (
                         self.position
-                        == self.nav.CURRENT_SCREEN.SELECTIONS["DEBUG"]
+                        == self.nav.CURRENT_SCREEN.SELECTIONS["AES"]
                     ):
-                        self.nav.display.clear_screen()
-                        self.nav.get_screen(Debug)
-                        # self.nav.CURRENT_SCREEN.update_volume(self.volume)
-                        self.nav.display.display_image()
-                        self.position = -1  # Reset selection position
+                        if not self.audio_man.crypto_manager.mode_aes:
+                            self.audio_man.crypto_manager.mode_aes = True
+                            self.audio_man.crypto_manager.mode_rsa = False
+                            self.audio_man.crypto_manager.mode_hybrid = False
+                            self.logger.info("AES Mode Selected")
+                    elif (
+                        self.position
+                        == self.nav.CURRENT_SCREEN.SELECTIONS["RSA"]
+                    ):
+                        if not self.audio_man.crypto_manager.mode_rsa:
+                            self.audio_man.crypto_manager.mode_aes = False
+                            self.audio_man.crypto_manager.mode_rsa = True
+                            self.audio_man.crypto_manager.mode_hybrid = False
+                            self.logger.info("RSA Mode Selected")
+                    elif (
+                        self.position
+                        == self.nav.CURRENT_SCREEN.SELECTIONS["HYBRID"]
+                    ):
+                        if not self.audio_man.crypto_manager.mode_hybrid:
+                            self.audio_man.crypto_manager.mode_aes = False
+                            self.audio_man.crypto_manager.mode_rsa = False
+                            self.audio_man.crypto_manager.mode_hybrid = True
+                            self.logger.info("HYBRID Mode Selected")
 
-                        self.thread_manager.start_thread(
-                            "Debug", self.nav.CURRENT_SCREEN.display_debug_info
-                        )
+                    # Update the display based on the selection.
+                    self.nav.display.clear_screen()
+                    self.nav.get_screen(
+                        Mode,
+                        self.audio_man.crypto_manager.mode_aes,
+                        self.audio_man.crypto_manager.mode_rsa,
+                        self.audio_man.crypto_manager.mode_hybrid,
+                    )
+                    self.nav.CURRENT_SCREEN.update_volume(self.volume)
+                    self.nav.display.refresh_display()
+                    self.position = -1
+
+                    # self.nav.display.clear_screen()
+                    # self.nav.get_screen(Debug)
+                    # # self.nav.CURRENT_SCREEN.update_volume(self.volume)
+                    # self.nav.display.display_image()
+                    # self.position = -1  # Reset selection position
+
+                    # self.thread_manager.start_thread(
+                    #     "Debug", self.nav.CURRENT_SCREEN.display_debug_info
+                    # )
                 elif isinstance(self.nav.CURRENT_SCREEN, Settings):
                     # Toggling encryption
                     if (

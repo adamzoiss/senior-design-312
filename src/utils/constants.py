@@ -11,6 +11,9 @@ import pyaudio
 Option to enable logging to the terminal/console.
 """
 EN_CONSOLE_LOGGING = True
+MODE_AES = True  # AES mode
+MODE_RSA = False  # RSA mode
+MODE_HYBRID = False  # Hybrid mode
 
 """
 Application threads
@@ -87,7 +90,7 @@ RATE = 48000
 FRAME_SIZE = 960  # 20ms Opus frame at 48kHz
 # Input and output device indices.
 INPUT_DEV_INDEX = 1
-OUTPUT_DEV_INDEX = 2
+OUTPUT_DEV_INDEX = 0
 
 # Audio processing parameters
 ENABLE_NORMALIZATION = True

@@ -105,9 +105,9 @@ class RFManager:
             packet = self.rfm69.receive(timeout=None)
             # Ensure the packet has data
             if packet is not None:
-                # Check if encryption is enabled, if so decrypt the packet data
-                if self.audio_manager.crypto_manager.denc_en:
-                    packet = self.audio_manager.crypto_manager.decrypt(packet)
+                # # Check if encryption is enabled, if so decrypt the packet data
+                # if self.audio_manager.crypto_manager.denc_en:
+                #     packet = self.audio_manager.crypto_manager.decrypt(packet)
                 # Place the packet in the queue
                 self.packet_queue.put(packet)
 
@@ -149,7 +149,8 @@ class RFManager:
                 # Get next packet, wait up to BUFFER_TIMEOUT seconds
                 packet = self.packet_queue.get(timeout=BUFFER_TIMEOUT)
                 if packet[0:2] == START_SEQUENCE:
-
+                    # Check if the packet is a start sequence, if so reset the buffer
+                    # and set the frame length
                     self.pkt_buffer = b""
                     self.frame_len = int.from_bytes(packet[2:4], "big")
 
@@ -164,6 +165,25 @@ class RFManager:
                 if opus_frame:
                     # Decode and play audio
                     try:
+                        # Check to see if data encryption is enabled.
+                        if self.audio_manager.crypto_manager.denc_en:
+                            # Check if AES is enabled.
+                            if self.audio_manager.crypto_manager.mode_aes:
+                                opus_frame = (
+                                    self.audio_manager.crypto_manager.decrypt(
+                                        opus_frame
+                                    )
+                                )
+                            # Check if RSA is enabled.
+                            elif self.audio_manager.crypto_manager.mode_rsa:
+                                # TODO: Implement RSA decryption
+                                pass
+                            # Check if Hybrid AES is enabled.
+                            elif self.audio_manager.crypto_manager.mode_hybrid:
+                                opus_frame = self.audio_manager.crypto_manager.hybrid_decrypt(
+                                    opus_frame
+                                )
+
                         decoded_audio = self.audio_manager.decoder.decode(
                             bytes(opus_frame), FRAME_SIZE
                         )
@@ -190,14 +210,43 @@ class RFManager:
 
         while not stop_event.is_set():
             try:
+                # Read the data from the input stream
                 data = self.audio_manager.input_stream.read(
                     FRAME_SIZE, exception_on_overflow=False
                 )
+                # Encode the data
                 encoded = self.audio_manager.encoder.encode(data, FRAME_SIZE)
+                # Add the length of the encoded frame, packs two bytes big
+                # endian, unsigned short to the front of the encoded data.
                 encoded_size = struct.pack(">H", len(encoded))
 
+                if self.audio_manager.crypto_manager.denc_en:
+                    # Check if in AES mode
+                    if self.audio_manager.crypto_manager.mode_aes:
+                        # Encrypt the encoded data if encryption is enabled
+                        enc_encoded = (
+                            self.audio_manager.crypto_manager.encrypt(encoded)
+                        )
+                    elif self.audio_manager.crypto_manager.mode_rsa:
+                        # TODO: Implemenet RSA encryption
+                        enc_encoded = encoded  #! Remove when implemented
+                        pass
+                    # Check if in hybrid mode
+                    elif self.audio_manager.crypto_manager.mode_hybrid:
+                        # Encrypt the encoded data if encryption is enabled
+                        enc_encoded = (
+                            self.audio_manager.crypto_manager.hybrid_encrypt(
+                                encoded
+                            )
+                        )
+                    # If encryption is enabled, use the encrypted data
+                    pkt_data = enc_encoded
+                else:
+                    # If encryption is not enabled, use the original encoded data
+                    pkt_data = encoded
+
                 # Write the length of the encoded frame first (to aid decoding)
-                pkt_buffer = START_SEQUENCE + encoded_size + encoded
+                pkt_buffer = START_SEQUENCE + encoded_size + pkt_data
                 req_pkts = ceil(len(pkt_buffer) / 60)
                 req_padding_len = (req_pkts * 60) - len(pkt_buffer)
                 pkt_buffer = pkt_buffer + (b"\x00" * req_padding_len)
@@ -205,9 +254,9 @@ class RFManager:
                 for i in range(0, req_pkts):
                     # Get the packet data
                     pkt = pkt_buffer[i * PACKET_SIZE : (i + 1) * PACKET_SIZE]
-                    # Encrypt the packet if encryption is enabled
-                    if self.audio_manager.crypto_manager.denc_en:
-                        pkt = self.audio_manager.crypto_manager.encrypt(pkt)
+                    # # Encrypt the packet if encryption is enabled
+                    # if self.audio_manager.crypto_manager.denc_en:
+                    #     pkt = self.audio_manager.crypto_manager.encrypt(pkt)
                     # Send the packet
                     self.rfm69.send(pkt)
                     # Delay to allow the transceiver to process the packet
